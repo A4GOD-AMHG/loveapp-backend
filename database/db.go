@@ -8,10 +8,10 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-var db *sql.DB
+var Db *sql.DB
 
-func initDB() {
-	dbPath := "./data/app.db"
+func InitDB() {
+	dbPath := "./data/loveapp.db"
 	if os.Getenv("DB_PATH") != "" {
 		dbPath = os.Getenv("DB_PATH")
 	}
@@ -19,7 +19,7 @@ func initDB() {
 	os.MkdirAll("./data", 0755)
 
 	var err error
-	db, err = sql.Open("sqlite3", dbPath+"?_foreign_keys=ON")
+	Db, err = sql.Open("sqlite3", dbPath+"?_foreign_keys=ON")
 	if err != nil {
 		log.Fatal(err)
 	}

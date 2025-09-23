@@ -1,21 +1,23 @@
-package main
+package routes
 
 import (
 	"net/http"
-	"github.com/A4GOD-AMHG/LoveApp-Backend/controllers"
+
+	"github.com/A4GOD-AMHG/LoveApp-Backend/middleware"
+	"github.com/A4GOD-AMHG/LoveApp-Backend/controller"
 	"github.com/gorilla/mux"
 )
 
-func registerRoutes(r *mux.Router) {
-	r.HandleFunc("/login", controllers.loginHandler).Methods("POST")
+func RegisterRoutes(r *mux.Router) {
+	r.HandleFunc("/login", controller.LoginHandler).Methods("POST")
 
 	auth := r.NewRoute().Subrouter()
-	auth.Use(authMiddleware)
-	auth.HandleFunc("/change-password", changePasswordHandler).Methods("POST")
-	auth.HandleFunc("/todos", createTodoHandler).Methods("POST")
-	auth.HandleFunc("/todos", listTodosHandler).Methods("GET")
-	auth.HandleFunc("/todos/{id}", deleteTodoHandler).Methods("DELETE")
-	auth.HandleFunc("/todos/{id}/complete", completeTodoHandler).Methods("POST")
+	auth.Use(middleware.AuthMiddleware)
+	auth.HandleFunc("/change-password", controller.ChangePasswordHandler).Methods("POST")
+	auth.HandleFunc("/todos", controller.CreateTodoHandler).Methods("POST")
+	auth.HandleFunc("/todos", controller.ListTodosHandler).Methods("GET")
+	auth.HandleFunc("/todos/{id}", controller.DeleteTodoHandler).Methods("DELETE")
+	auth.HandleFunc("/todos/{id}/complete", controller.CompleteTodoHandler).Methods("POST")
 
 	r.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(200)

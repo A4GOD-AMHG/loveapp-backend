@@ -1,4 +1,4 @@
-package config
+package middleware
 
 import (
 	"context"
@@ -6,33 +6,37 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/A4GOD-AMHG/LoveApp-Backend/controller"
+	"github.com/A4GOD-AMHG/LoveApp-Backend/config"
+	"github.com/A4GOD-AMHG/LoveApp-Backend/util"
+
 	"github.com/golang-jwt/jwt/v5"
 )
 
-func authMiddleware(next http.Handler) http.Handler {
+func AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		header := r.Header.Get("Authorization")
 		var tok string
 		fmt.Sscanf(header, "Bearer %s", &tok)
 		if tok == "" {
-			jsonResp(w, 401, map[string]string{"error": "invalid token"})
+			util.JsonResp(w, 401, map[string]string{"error": "invalid token"})
 			return
 		}
 		token, err := jwt.Parse(tok, func(t *jwt.Token) (any, error) {
 			if t.Method.Alg() != jwt.SigningMethodHS256.Alg() {
 				return nil, errors.New("unexpected signing method")
 			}
-			return jwtSecret, nil
+			return config.JwtSecret, nil
 		})
 		if err != nil || !token.Valid {
-			jsonResp(w, 401, map[string]string{"error": "invalid token"})
+			util.JsonResp(w, 401, map[string]string{"error": "invalid token"})
 			return
 		}
 		claims := token.Claims.(jwt.MapClaims)
 		sub := int64(claims["sub"].(float64))
-		user, err := findUserByID(sub)
+		user, err := controller.FindUserByID(sub)
 		if err != nil {
-			jsonResp(w, 401, map[string]string{"error": "invalid token user"})
+			util.JsonResp(w, 401, map[string]string{"error": "invalid token user"})
 			return
 		}
 		ctx := context.WithValue(r.Context(), "user", user)

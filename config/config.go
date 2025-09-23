@@ -2,11 +2,11 @@ package config
 
 import "os"
 
-var jwtSecret []byte
+var JwtSecret []byte
 
-func initConfig() {
-	jwtSecret = []byte(os.Getenv("JWT_SECRET"))
-	if len(jwtSecret) == 0 {
-		jwtSecret = []byte("secret")
+func InitConfig() {
+	JwtSecret = []byte(os.Getenv("JWT_SECRET"))
+	if len(JwtSecret) == 0 {
+		JwtSecret = []byte("secret")
 	}
 }
