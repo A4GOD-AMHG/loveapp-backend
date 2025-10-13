@@ -1,0 +1,492 @@
+basePath: /
+definitions:
+  models.ChangePasswordRequest:
+    description: Change password request
+    properties:
+      new_password:
+        description: New password
+        example: newpassword
+        type: string
+      old_password:
+        description: Current password
+        example: oldpassword
+        type: string
+    required:
+    - new_password
+    - old_password
+    type: object
+  models.ChangePasswordResponse:
+    description: Change password response
+    properties:
+      message:
+        description: Success message
+        example: Contraseña cambiada exitosamente
+        type: string
+    type: object
+  models.CompleteTodoResponse:
+    description: Complete todo response
+    properties:
+      message:
+        description: Success message
+        example: Todo marcado como completado
+        type: string
+      todo:
+        allOf:
+        - $ref: '#/definitions/models.Todo'
+        description: Updated todo
+    type: object
+  models.CreateTodoRequest:
+    description: Create todo request
+    properties:
+      description:
+        description: Todo description
+        example: Ir al supermercado y comprar frutas y verduras
+        type: string
+      title:
+        description: Todo title
+        example: Comprar comida
+        type: string
+    required:
+    - title
+    type: object
+  models.CreateTodoResponse:
+    description: Create todo response
+    properties:
+      message:
+        description: Success message
+        example: Todo creado exitosamente
+        type: string
+      todo:
+        allOf:
+        - $ref: '#/definitions/models.Todo'
+        description: Created todo
+    type: object
+  models.ErrorResponse:
+    description: Error response
+    properties:
+      code:
+        description: Error code
+        example: 400
+        type: integer
+      error:
+        description: Error message
+        example: Error message
+        type: string
+      message:
+        description: Detailed error message
+        example: Detailed error
+        type: string
+    type: object
+  models.HealthResponse:
+    description: Health check response
+    properties:
+      message:
+        description: Status message
+        example: Servicio funcionando
+        type: string
+      status:
+        description: Service status
+        example: ok
+        type: string
+    type: object
+  models.LoginRequest:
+    description: Login credentials
+    properties:
+      password:
+        description: Password
+        example: password
+        type: string
+      username:
+        description: Username
+        example: anyel
+        type: string
+    required:
+    - password
+    - username
+    type: object
+  models.LoginResponse:
+    description: Login response with token and user info
+    properties:
+      message:
+        description: Success message
+        example: Inicio de sesión exitoso
+        type: string
+      token:
+        description: JWT token
+        example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        type: string
+      user:
+        allOf:
+        - $ref: '#/definitions/models.User'
+        description: User information
+    type: object
+  models.SuccessResponse:
+    description: Success response
+    properties:
+      data:
+        description: Optional data
+      message:
+        description: Success message
+        example: Operación exitosa
+        type: string
+    type: object
+  models.Todo:
+    description: Todo item information
+    properties:
+      completed_alexis:
+        description: Completed by Alexis
+        example: false
+        type: boolean
+      completed_anyel:
+        description: Completed by Anyel
+        example: true
+        type: boolean
+      created_at:
+        description: Creation timestamp
+        example: "2024-01-01T00:00:00Z"
+        type: string
+      creator_id:
+        description: Creator user ID
+        example: 1
+        type: integer
+      creator_username:
+        description: Creator username
+        example: anyel
+        type: string
+      description:
+        description: Todo description
+        example: Ir al supermercado y comprar...
+        type: string
+      id:
+        description: Todo ID
+        example: 1
+        type: integer
+      is_completed:
+        description: Overall completion status
+        example: false
+        type: boolean
+      title:
+        description: Todo title
+        example: Comprar comida
+        type: string
+      updated_at:
+        description: Last update timestamp
+        example: "2024-01-01T00:00:00Z"
+        type: string
+    type: object
+  models.TodoListResponse:
+    description: Todo list response
+    properties:
+      message:
+        description: Success message
+        example: Todos obtenidos exitosamente
+        type: string
+      todos:
+        description: List of todos
+        items:
+          $ref: '#/definitions/models.Todo'
+        type: array
+      total:
+        description: Total count
+        example: 5
+        type: integer
+    type: object
+  models.User:
+    description: User account information
+    properties:
+      created_at:
+        description: Creation timestamp
+        example: "2024-01-01T00:00:00Z"
+        type: string
+      id:
+        description: User ID
+        example: 1
+        type: integer
+      updated_at:
+        description: Last update timestamp
+        example: "2024-01-01T00:00:00Z"
+        type: string
+      username:
+        description: Username
+        example: anyel
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@loveapp.com
+    name: API Support
+  description: This is a todo management API for couples. It allows two users (anyel
+    and alexis) to create, manage, and complete todos together.
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  termsOfService: http://swagger.io/terms/
+  title: LoveApp Backend API
+  version: "1.0"
+paths:
+  /auth/change-password:
+    post:
+      consumes:
+      - application/json
+      description: Change the password for the authenticated user
+      parameters:
+      - description: Password change request
+        in: body
+        name: password
+        required: true
+        schema:
+          $ref: '#/definitions/models.ChangePasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Password changed successfully
+          schema:
+            $ref: '#/definitions/models.ChangePasswordResponse'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Change user password
+      tags:
+      - Authentication
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate user with username and password
+      parameters:
+      - description: Login credentials
+        in: body
+        name: credentials
+        required: true
+        schema:
+          $ref: '#/definitions/models.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Login successful
+          schema:
+            $ref: '#/definitions/models.LoginResponse'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Invalid credentials
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: User login
+      tags:
+      - Authentication
+  /health:
+    get:
+      consumes:
+      - application/json
+      description: Check if the service is running
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Service is healthy
+          schema:
+            $ref: '#/definitions/models.HealthResponse'
+      summary: Health check
+      tags:
+      - Health
+  /todos:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of todos with optional filters
+      parameters:
+      - default: all
+        description: Filter by status
+        enum:
+        - all
+        - pending
+        - completed
+        in: query
+        name: status
+        type: string
+      - description: Filter by creator user ID
+        in: query
+        name: creator_id
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Todos retrieved successfully
+          schema:
+            $ref: '#/definitions/models.TodoListResponse'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List todos
+      tags:
+      - Todos
+    post:
+      consumes:
+      - application/json
+      description: 'Create a new todo item (only for authorized users: anyel, alexis)'
+      parameters:
+      - description: Todo creation request
+        in: body
+        name: todo
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateTodoRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Todo created successfully
+          schema:
+            $ref: '#/definitions/models.CreateTodoResponse'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a new todo
+      tags:
+      - Todos
+  /todos/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a todo (only the creator can delete their todos)
+      parameters:
+      - description: Todo ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Todo deleted successfully
+          schema:
+            $ref: '#/definitions/models.SuccessResponse'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
+          description: Todo not found
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a todo
+      tags:
+      - Todos
+  /todos/{id}/complete:
+    post:
+      consumes:
+      - application/json
+      description: Mark a todo as completed by the authenticated user (both users
+        must mark it to be fully completed)
+      parameters:
+      - description: Todo ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Todo marked as completed
+          schema:
+            $ref: '#/definitions/models.CompleteTodoResponse'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
+          description: Todo not found
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Mark todo as completed
+      tags:
+      - Todos
+securityDefinitions:
+  BearerAuth:
+    description: Type "Bearer" followed by a space and JWT token.
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

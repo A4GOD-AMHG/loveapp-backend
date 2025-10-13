@@ -2,44 +2,77 @@ package middleware
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"net/http"
+	"strings"
 
-	"github.com/A4GOD-AMHG/LoveApp-Backend/controller"
-	"github.com/A4GOD-AMHG/LoveApp-Backend/config"
-	"github.com/A4GOD-AMHG/LoveApp-Backend/util"
-
-	"github.com/golang-jwt/jwt/v5"
+	"github.com/A4GOD-AMHG/LoveApp-Backend/internal/services"
+	"github.com/A4GOD-AMHG/LoveApp-Backend/pkg/auth"
+	"github.com/A4GOD-AMHG/LoveApp-Backend/pkg/response"
 )
 
+// AuthMiddleware validates JWT tokens and adds user info to context
 func AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		header := r.Header.Get("Authorization")
-		var tok string
-		fmt.Sscanf(header, "Bearer %s", &tok)
-		if tok == "" {
-			util.JsonResp(w, 401, map[string]string{"error": "invalid token"})
+		// Get Authorization header
+		authHeader := r.Header.Get("Authorization")
+		if authHeader == "" {
+			response.Unauthorized(w, "Token de autorización requerido")
 			return
 		}
-		token, err := jwt.Parse(tok, func(t *jwt.Token) (any, error) {
-			if t.Method.Alg() != jwt.SigningMethodHS256.Alg() {
-				return nil, errors.New("unexpected signing method")
-			}
-			return config.JwtSecret, nil
-		})
-		if err != nil || !token.Valid {
-			util.JsonResp(w, 401, map[string]string{"error": "invalid token"})
+		
+		// Extract token from "Bearer <token>"
+		parts := strings.Split(authHeader, " ")
+		if len(parts) != 2 || parts[0] != "Bearer" {
+			response.Unauthorized(w, "Formato de token inválido")
 			return
 		}
-		claims := token.Claims.(jwt.MapClaims)
-		sub := int64(claims["sub"].(float64))
-		user, err := controller.FindUserByID(sub)
+		
+		tokenString := parts[1]
+		
+		// Validate token
+		claims, err := auth.ValidateToken(tokenString)
 		if err != nil {
-			util.JsonResp(w, 401, map[string]string{"error": "invalid token user"})
+			response.Unauthorized(w, "Token inválido")
 			return
 		}
+		
+		// Get user from database
+		authService := services.NewAuthService()
+		user, err := authService.GetUserByID(claims.UserID)
+		if err != nil {
+			response.Unauthorized(w, "Usuario no encontrado")
+			return
+		}
+		
+		// Add user to context
 		ctx := context.WithValue(r.Context(), "user", user)
+		ctx = context.WithValue(ctx, "user_id", user.ID)
+		ctx = context.WithValue(ctx, "username", user.Username)
+		
 		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+// CORSMiddleware handles CORS headers
+func CORSMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		
+		next.ServeHTTP(w, r)
+	})
+}
+
+// LoggingMiddleware logs HTTP requests
+func LoggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// You can add logging logic here
+		next.ServeHTTP(w, r)
 	})
 }

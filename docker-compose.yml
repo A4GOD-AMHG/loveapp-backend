@@ -1,0 +1,30 @@
+services:
+  # LoveApp Backend
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      network: host
+    container_name: loveapp-backend
+    restart: unless-stopped
+    environment:
+      ENV: ${ENV:-development}
+      DB_PATH: ${DB_PATH:-/app/data/loveapp.db}
+      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-this-in-production}
+      SERVER_PORT: 8080
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    volumes:
+      - sqlite_data:/app/data
+    networks:
+      - loveapp-network
+
+volumes:
+  sqlite_data:
+    driver: local
+    name: loveapp_sqlite_data
+
+networks:
+  loveapp-network:
+    driver: bridge
+    name: loveapp-network

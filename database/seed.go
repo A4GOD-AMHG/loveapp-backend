@@ -1,20 +1,39 @@
 package database
 
-import "golang.org/x/crypto/bcrypt"
+import (
+	"log"
 
+	"github.com/A4GOD-AMHG/LoveApp-Backend/pkg/database"
+	"golang.org/x/crypto/bcrypt"
+)
+
+// Seed creates initial data in the database
 func Seed() error {
 	users := []string{"anyel", "alexis"}
-	for _, u := range users {
+	
+	for _, username := range users {
 		var id int
-		err := Db.QueryRow("SELECT id FROM users WHERE username = ?", u).Scan(&id)
+		err := database.DB.QueryRow("SELECT id FROM users WHERE username = $1", username).Scan(&id)
 		if err == nil {
+			log.Printf("User %s already exists, skipping...", username)
 			continue
 		}
-		hash, _ := bcrypt.GenerateFromPassword([]byte("password"), bcrypt.DefaultCost)
-		_, err = Db.Exec("INSERT INTO users (username, password) VALUES (?, ?)", u, string(hash))
+		
+		// Hash the default password
+		hash, err := bcrypt.GenerateFromPassword([]byte("password"), bcrypt.DefaultCost)
 		if err != nil {
 			return err
 		}
+		
+		// Insert the user
+		_, err = database.DB.Exec("INSERT INTO users (username, password) VALUES ($1, $2)", username, string(hash))
+		if err != nil {
+			return err
+		}
+		
+		log.Printf("Created user: %s with password: password", username)
 	}
+	
+	log.Println("Database seeding completed successfully")
 	return nil
 }
