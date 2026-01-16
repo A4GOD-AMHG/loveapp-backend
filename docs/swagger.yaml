@@ -9,8 +9,6 @@ definitions:
     properties:
       content:
         type: string
-      receiver_id:
-        type: integer
     type: object
   models.ChangePasswordRequest:
     description: Solicitud de cambio de contraseña
@@ -76,18 +74,6 @@ definitions:
         example: Error detallado
         type: string
     type: object
-  models.HealthResponse:
-    description: Respuesta de verificación de estado
-    properties:
-      message:
-        description: Mensaje de estado
-        example: Servicio funcionando
-        type: string
-      status:
-        description: Estado del servicio
-        example: ok
-        type: string
-    type: object
   models.LoginRequest:
     description: Credenciales de inicio de sesión
     properties:
@@ -128,11 +114,11 @@ definitions:
       id:
         type: integer
       receiver:
-        $ref: '#/definitions/models.User'
+        $ref: '#/definitions/models.UserSummary'
       receiver_id:
         type: integer
       sender:
-        $ref: '#/definitions/models.User'
+        $ref: '#/definitions/models.UserSummary'
       sender_id:
         type: integer
       status:
@@ -245,6 +231,19 @@ definitions:
         example: anyel
         type: string
     type: object
+  models.UserSummary:
+    description: Información resumida de usuario
+    properties:
+      id:
+        example: 1
+        type: integer
+      name:
+        example: Anyel
+        type: string
+      username:
+        example: anyel
+        type: string
+    type: object
 host: localhost:8080
 info:
   contact: {}
@@ -344,26 +343,11 @@ paths:
       summary: Cerrar sesión
       tags:
       - Autenticación
-  /health:
-    get:
-      consumes:
-      - application/json
-      description: Verificar si el servicio está funcionando
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Servicio saludable
-          schema:
-            $ref: '#/definitions/models.HealthResponse'
-      summary: Verificación de estado
-      tags:
-      - Estado
   /messages:
     post:
       consumes:
       - application/json
-      description: Envía un mensaje del usuario autenticado a otro usuario.
+      description: Envía un mensaje del usuario autenticado al otro usuario del sistema.
       parameters:
       - description: Carga útil del mensaje
         in: body
@@ -479,15 +463,96 @@ paths:
       summary: Editar un mensaje
       tags:
       - Mensajes
-  /messages/conversation/{userId}:
-    get:
-      description: Recupera el historial completo de mensajes entre el usuario autenticado
-        y otro usuario.
+  /messages/{id}/delivered:
+    patch:
+      description: Marca un mensaje como entregado al destinatario.
       parameters:
-      - description: El ID del otro usuario
+      - description: ID del mensaje
         in: path
-        name: userId
+        name: id
         required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Mensaje marcado como entregado
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: No autorizado
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Prohibido
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
+          description: No encontrado
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Error interno del servidor
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Marcar mensaje como entregado
+      tags:
+      - Mensajes
+  /messages/{id}/read:
+    patch:
+      description: Marca un mensaje como leído por el destinatario.
+      parameters:
+      - description: ID del mensaje
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Mensaje marcado como leído
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: No autorizado
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Prohibido
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
+          description: No encontrado
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Error interno del servidor
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Marcar mensaje como leído
+      tags:
+      - Mensajes
+  /messages/conversation:
+    get:
+      description: Recupera el historial de mensajes entre el usuario autenticado
+        y el otro usuario del sistema, con paginación.
+      parameters:
+      - description: Número de página (por defecto 1)
+        in: query
+        name: page
+        type: integer
+      - description: Mensajes por página (por defecto 10)
+        in: query
+        name: per_page
         type: integer
       produces:
       - application/json

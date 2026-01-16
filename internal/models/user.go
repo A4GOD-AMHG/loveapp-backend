@@ -13,6 +13,14 @@ type User struct {
 	UpdatedAt time.Time `json:"updated_at" db:"updated_at" example:"2024-01-01T00:00:00Z"`
 }
 
+// UserSummary representa una versión resumida del usuario para respuestas públicas o anidadas
+// @Description Información resumida de usuario
+type UserSummary struct {
+	ID       int64  `json:"id" example:"1"`
+	Name     string `json:"name" example:"Anyel"`
+	Username string `json:"username" example:"anyel"`
+}
+
 // LoginRequest representa la carga útil de solicitud de inicio de sesión
 // @Description Credenciales de inicio de sesión
 type LoginRequest struct {
