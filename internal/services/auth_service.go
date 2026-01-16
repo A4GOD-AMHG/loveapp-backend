@@ -53,16 +53,10 @@ func (s *AuthService) Login(req *models.LoginRequest) (*models.LoginResponse, er
 
 // ChangePassword changes a user's password
 func (s *AuthService) ChangePassword(userID int64, req *models.ChangePasswordRequest) (*models.ChangePasswordResponse, error) {
-	// Get current password hash
-	currentHash, err := s.userRepo.GetPasswordHash(userID)
+	// Verify user exists
+	_, err := s.userRepo.FindByID(userID)
 	if err != nil {
 		return nil, fmt.Errorf("usuario no encontrado")
-	}
-	
-	// Verify old password
-	err = bcrypt.CompareHashAndPassword([]byte(currentHash), []byte(req.OldPassword))
-	if err != nil {
-		return nil, fmt.Errorf("contraseña actual incorrecta")
 	}
 	
 	// Hash new password
