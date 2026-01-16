@@ -1,103 +1,102 @@
 basePath: /
 definitions:
+  controllers.editMessageRequest:
+    properties:
+      content:
+        type: string
+    type: object
+  controllers.sendMessageRequest:
+    properties:
+      content:
+        type: string
+      receiver_id:
+        type: integer
+    type: object
   models.ChangePasswordRequest:
-    description: Change password request
+    description: Solicitud de cambio de contraseña
     properties:
       new_password:
-        description: New password
+        description: Nueva contraseña
         example: newpassword
-        type: string
-      old_password:
-        description: Current password
-        example: oldpassword
         type: string
     required:
     - new_password
-    - old_password
     type: object
   models.ChangePasswordResponse:
-    description: Change password response
+    description: Respuesta de cambio de contraseña
     properties:
       message:
-        description: Success message
-        example: Contraseña cambiada exitosamente
+        description: Mensaje de éxito
+        example: ¡Contraseña actualizada con éxito! ✨
         type: string
     type: object
   models.CompleteTodoResponse:
-    description: Complete todo response
+    description: Respuesta de finalización de tarea
     properties:
       message:
-        description: Success message
-        example: Todo marcado como completado
+        example: "¡Bien hecho! Tarea marcada como completada. \U0001F389"
         type: string
       todo:
-        allOf:
-        - $ref: '#/definitions/models.Todo'
-        description: Updated todo
+        $ref: '#/definitions/models.Todo'
     type: object
   models.CreateTodoRequest:
-    description: Create todo request
+    description: Solicitud de creación de tarea
     properties:
       description:
-        description: Todo description
         example: Ir al supermercado y comprar frutas y verduras
         type: string
       title:
-        description: Todo title
         example: Comprar comida
         type: string
     required:
     - title
     type: object
   models.CreateTodoResponse:
-    description: Create todo response
+    description: Respuesta de creación de tarea
     properties:
       message:
-        description: Success message
-        example: Todo creado exitosamente
+        example: "¡Tarea creada con éxito! \U0001F680"
         type: string
       todo:
-        allOf:
-        - $ref: '#/definitions/models.Todo'
-        description: Created todo
+        $ref: '#/definitions/models.Todo'
     type: object
   models.ErrorResponse:
-    description: Error response
+    description: Respuesta de error
     properties:
       code:
-        description: Error code
+        description: Código de error
         example: 400
         type: integer
       error:
-        description: Error message
-        example: Error message
+        description: Mensaje de error
+        example: Mensaje de error
         type: string
       message:
-        description: Detailed error message
-        example: Detailed error
+        description: Mensaje de error detallado
+        example: Error detallado
         type: string
     type: object
   models.HealthResponse:
-    description: Health check response
+    description: Respuesta de verificación de estado
     properties:
       message:
-        description: Status message
+        description: Mensaje de estado
         example: Servicio funcionando
         type: string
       status:
-        description: Service status
+        description: Estado del servicio
         example: ok
         type: string
     type: object
   models.LoginRequest:
-    description: Login credentials
+    description: Credenciales de inicio de sesión
     properties:
       password:
-        description: Password
+        description: Contraseña
         example: password
         type: string
       username:
-        description: Username
+        description: Nombre de usuario
         example: anyel
         type: string
     required:
@@ -105,133 +104,162 @@ definitions:
     - username
     type: object
   models.LoginResponse:
-    description: Login response with token and user info
+    description: Respuesta de inicio de sesión con token e información de usuario
     properties:
       message:
-        description: Success message
+        description: Mensaje de éxito
         example: Inicio de sesión exitoso
         type: string
       token:
-        description: JWT token
+        description: Token JWT
         example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
         type: string
       user:
         allOf:
         - $ref: '#/definitions/models.User'
-        description: User information
+        description: Información de usuario
+    type: object
+  models.Message:
+    properties:
+      content:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: integer
+      receiver:
+        $ref: '#/definitions/models.User'
+      receiver_id:
+        type: integer
+      sender:
+        $ref: '#/definitions/models.User'
+      sender_id:
+        type: integer
+      status:
+        type: string
+      updated_at:
+        type: string
     type: object
   models.SuccessResponse:
-    description: Success response
+    description: Respuesta de éxito
     properties:
       data:
-        description: Optional data
+        description: Datos opcionales
       message:
-        description: Success message
+        description: Mensaje de éxito
         example: Operación exitosa
         type: string
     type: object
   models.Todo:
-    description: Todo item information
+    description: Información del elemento de tarea
     properties:
       completed_alexis:
-        description: Completed by Alexis
         example: false
         type: boolean
       completed_anyel:
-        description: Completed by Anyel
         example: true
         type: boolean
       created_at:
-        description: Creation timestamp
         example: "2024-01-01T00:00:00Z"
         type: string
       creator_id:
-        description: Creator user ID
         example: 1
         type: integer
       creator_username:
-        description: Creator username
         example: anyel
         type: string
       description:
-        description: Todo description
         example: Ir al supermercado y comprar...
         type: string
       id:
-        description: Todo ID
         example: 1
         type: integer
       is_completed:
-        description: Overall completion status
         example: false
         type: boolean
       title:
-        description: Todo title
         example: Comprar comida
         type: string
       updated_at:
-        description: Last update timestamp
         example: "2024-01-01T00:00:00Z"
         type: string
     type: object
   models.TodoListResponse:
-    description: Todo list response
+    description: Respuesta de lista de tareas
     properties:
+      last_page:
+        example: 1
+        type: integer
       message:
-        description: Success message
-        example: Todos obtenidos exitosamente
+        example: "Aquí están todas las tareas. ¡Vamos a completarlas! \U0001F4AA"
         type: string
+      page:
+        example: 1
+        type: integer
+      per_page:
+        example: 10
+        type: integer
       todos:
-        description: List of todos
         items:
           $ref: '#/definitions/models.Todo'
         type: array
       total:
-        description: Total count
         example: 5
         type: integer
     type: object
+  models.UpdateTodoRequest:
+    description: Solicitud de actualización de tarea
+    properties:
+      description:
+        example: Ir al supermercado y comprar frutas y verduras
+        type: string
+      title:
+        example: Comprar comida
+        type: string
+    required:
+    - title
+    type: object
+  models.UpdateTodoStatusRequest:
+    description: Solicitud de actualización de estado de tarea
+    properties:
+      completed:
+        example: true
+        type: boolean
+    type: object
   models.User:
-    description: User account information
+    description: Información de cuenta de usuario
     properties:
       created_at:
-        description: Creation timestamp
         example: "2024-01-01T00:00:00Z"
         type: string
       id:
-        description: User ID
         example: 1
         type: integer
+      name:
+        example: Anyel
+        type: string
       updated_at:
-        description: Last update timestamp
         example: "2024-01-01T00:00:00Z"
         type: string
       username:
-        description: Username
         example: anyel
         type: string
     type: object
 host: localhost:8080
 info:
-  contact:
-    email: support@loveapp.com
-    name: API Support
-  description: This is a todo management API for couples. It allows two users (anyel
-    and alexis) to create, manage, and complete todos together.
-  license:
-    name: MIT
-    url: https://opensource.org/licenses/MIT
-  termsOfService: http://swagger.io/terms/
-  title: LoveApp Backend API
+  contact: {}
+  description: Esta es una API de gestión de tareas para parejas. Permite a dos usuarios
+    (anyel y alexis) crear, gestionar y completar tareas juntos.
+  title: API Backend de LoveApp
   version: "1.0"
 paths:
   /auth/change-password:
     post:
       consumes:
       - application/json
-      description: Change the password for the authenticated user
+      description: Cambiar la contraseña del usuario autenticado
       parameters:
-      - description: Password change request
+      - description: Solicitud de cambio de contraseña
         in: body
         name: password
         required: true
@@ -241,37 +269,37 @@ paths:
       - application/json
       responses:
         "200":
-          description: Password changed successfully
+          description: Contraseña cambiada exitosamente
           schema:
             $ref: '#/definitions/models.ChangePasswordResponse'
         "400":
-          description: Bad request
+          description: Solicitud incorrecta
           schema:
             $ref: '#/definitions/models.ErrorResponse'
         "401":
-          description: Unauthorized
+          description: No autorizado
           schema:
             $ref: '#/definitions/models.ErrorResponse'
         "403":
-          description: Forbidden
+          description: Prohibido
           schema:
             $ref: '#/definitions/models.ErrorResponse'
         "500":
-          description: Internal server error
+          description: Error interno del servidor
           schema:
             $ref: '#/definitions/models.ErrorResponse'
       security:
       - BearerAuth: []
-      summary: Change user password
+      summary: Cambiar contraseña de usuario
       tags:
-      - Authentication
+      - Autenticación
   /auth/login:
     post:
       consumes:
       - application/json
-      description: Authenticate user with username and password
+      description: Autenticar usuario con nombre de usuario y contraseña
       parameters:
-      - description: Login credentials
+      - description: Credenciales de inicio de sesión
         in: body
         name: credentials
         required: true
@@ -281,88 +309,280 @@ paths:
       - application/json
       responses:
         "200":
-          description: Login successful
+          description: Inicio de sesión exitoso
           schema:
             $ref: '#/definitions/models.LoginResponse'
         "400":
-          description: Bad request
+          description: Solicitud incorrecta
           schema:
             $ref: '#/definitions/models.ErrorResponse'
         "401":
-          description: Invalid credentials
+          description: Credenciales inválidas
           schema:
             $ref: '#/definitions/models.ErrorResponse'
         "500":
-          description: Internal server error
+          description: Error interno del servidor
           schema:
             $ref: '#/definitions/models.ErrorResponse'
-      summary: User login
+      summary: Inicio de sesión de usuario
       tags:
-      - Authentication
-  /health:
-    get:
-      consumes:
-      - application/json
-      description: Check if the service is running
+      - Autenticación
+  /auth/logout:
+    post:
+      description: Cerrar la sesión del usuario actual
       produces:
       - application/json
       responses:
         "200":
-          description: Service is healthy
+          description: Cierre de sesión exitoso
           schema:
-            $ref: '#/definitions/models.HealthResponse'
-      summary: Health check
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Cerrar sesión
       tags:
-      - Health
-  /todos:
+      - Autenticación
+  /health:
     get:
       consumes:
       - application/json
-      description: Get a list of todos with optional filters
+      description: Verificar si el servicio está funcionando
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Servicio saludable
+          schema:
+            $ref: '#/definitions/models.HealthResponse'
+      summary: Verificación de estado
+      tags:
+      - Estado
+  /messages:
+    post:
+      consumes:
+      - application/json
+      description: Envía un mensaje del usuario autenticado a otro usuario.
       parameters:
-      - default: all
-        description: Filter by status
-        enum:
-        - all
-        - pending
-        - completed
-        in: query
-        name: status
-        type: string
-      - description: Filter by creator user ID
-        in: query
-        name: creator_id
+      - description: Carga útil del mensaje
+        in: body
+        name: message
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.sendMessageRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Mensaje enviado exitosamente
+          schema:
+            $ref: '#/definitions/models.Message'
+        "400":
+          description: Solicitud incorrecta
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: No autorizado
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Error interno del servidor
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Enviar un mensaje
+      tags:
+      - Mensajes
+  /messages/{id}:
+    delete:
+      description: Elimina un mensaje para el remitente y el destinatario.
+      parameters:
+      - description: ID del mensaje
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Sin Contenido
+        "401":
+          description: No autorizado
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Prohibido
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
+          description: No encontrado
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Error interno del servidor
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Eliminar un mensaje
+      tags:
+      - Mensajes
+    put:
+      consumes:
+      - application/json
+      description: Edita un mensaje enviado por el usuario autenticado, si es dentro
+        de 1 hora de enviado.
+      parameters:
+      - description: ID del mensaje
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Nuevo contenido del mensaje
+        in: body
+        name: message
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.editMessageRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Mensaje actualizado exitosamente
+          schema:
+            $ref: '#/definitions/models.Message'
+        "400":
+          description: Solicitud incorrecta
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: No autorizado
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Prohibido
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
+          description: No encontrado
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Error interno del servidor
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Editar un mensaje
+      tags:
+      - Mensajes
+  /messages/conversation/{userId}:
+    get:
+      description: Recupera el historial completo de mensajes entre el usuario autenticado
+        y otro usuario.
+      parameters:
+      - description: El ID del otro usuario
+        in: path
+        name: userId
+        required: true
         type: integer
       produces:
       - application/json
       responses:
         "200":
-          description: Todos retrieved successfully
+          description: Historial de conversación
           schema:
-            $ref: '#/definitions/models.TodoListResponse'
-        "400":
-          description: Bad request
-          schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            items:
+              $ref: '#/definitions/models.Message'
+            type: array
         "401":
-          description: Unauthorized
+          description: No autorizado
           schema:
             $ref: '#/definitions/models.ErrorResponse'
         "500":
-          description: Internal server error
+          description: Error interno del servidor
           schema:
             $ref: '#/definitions/models.ErrorResponse'
       security:
       - BearerAuth: []
-      summary: List todos
+      summary: Obtener conversación
       tags:
-      - Todos
+      - Mensajes
+  /todos:
+    get:
+      description: Obtener una lista de tareas con filtros opcionales por estado,
+        creador y ordenamiento por fecha de creación.
+      parameters:
+      - description: Filtrar por ID de usuario creador.
+        in: query
+        name: creator_id
+        type: integer
+      - default: all
+        description: Filtrar por estado.
+        enum:
+        - all
+        - completed
+        - incompleted
+        - completed_by_me
+        in: query
+        name: status
+        type: string
+      - description: Buscar por título o descripción.
+        in: query
+        name: search
+        type: string
+      - default: desc
+        description: Orden por fecha de creación.
+        enum:
+        - asc
+        - desc
+        in: query
+        name: sort_order
+        type: string
+      - default: 1
+        description: Número de página
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: Elementos por página
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Tareas recuperadas exitosamente
+          schema:
+            $ref: '#/definitions/models.TodoListResponse'
+        "400":
+          description: Solicitud incorrecta
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: No autorizado
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Error interno del servidor
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Listar tareas
+      tags:
+      - Tareas
     post:
       consumes:
       - application/json
-      description: 'Create a new todo item (only for authorized users: anyel, alexis)'
+      description: 'Crear una nueva tarea (solo para usuarios autorizados: anyel,
+        alexis)'
       parameters:
-      - description: Todo creation request
+      - description: Solicitud de creación de tarea
         in: body
         name: todo
         required: true
@@ -372,37 +592,35 @@ paths:
       - application/json
       responses:
         "201":
-          description: Todo created successfully
+          description: Tarea creada exitosamente
           schema:
             $ref: '#/definitions/models.CreateTodoResponse'
         "400":
-          description: Bad request
+          description: Solicitud incorrecta
           schema:
             $ref: '#/definitions/models.ErrorResponse'
         "401":
-          description: Unauthorized
+          description: No autorizado
           schema:
             $ref: '#/definitions/models.ErrorResponse'
         "403":
-          description: Forbidden
+          description: Prohibido
           schema:
             $ref: '#/definitions/models.ErrorResponse'
         "500":
-          description: Internal server error
+          description: Error interno del servidor
           schema:
             $ref: '#/definitions/models.ErrorResponse'
       security:
       - BearerAuth: []
-      summary: Create a new todo
+      summary: Crear una nueva tarea
       tags:
-      - Todos
+      - Tareas
   /todos/{id}:
     delete:
-      consumes:
-      - application/json
-      description: Delete a todo (only the creator can delete their todos)
+      description: Eliminar una tarea (solo el creador puede eliminar sus tareas)
       parameters:
-      - description: Todo ID
+      - description: ID de la tarea
         in: path
         name: id
         required: true
@@ -411,81 +629,150 @@ paths:
       - application/json
       responses:
         "200":
-          description: Todo deleted successfully
+          description: Tarea eliminada exitosamente
           schema:
             $ref: '#/definitions/models.SuccessResponse'
         "400":
-          description: Bad request
+          description: Solicitud incorrecta
           schema:
             $ref: '#/definitions/models.ErrorResponse'
         "401":
-          description: Unauthorized
+          description: No autorizado
           schema:
             $ref: '#/definitions/models.ErrorResponse'
         "403":
-          description: Forbidden
+          description: Prohibido
           schema:
             $ref: '#/definitions/models.ErrorResponse'
         "404":
-          description: Todo not found
+          description: Tarea no encontrada
           schema:
             $ref: '#/definitions/models.ErrorResponse'
         "500":
-          description: Internal server error
+          description: Error interno del servidor
           schema:
             $ref: '#/definitions/models.ErrorResponse'
       security:
       - BearerAuth: []
-      summary: Delete a todo
+      summary: Eliminar una tarea
       tags:
-      - Todos
-  /todos/{id}/complete:
-    post:
+      - Tareas
+    patch:
       consumes:
       - application/json
-      description: Mark a todo as completed by the authenticated user (both users
-        must mark it to be fully completed)
+      description: Actualizar el estado de la tarea (completado) para el usuario autenticado
       parameters:
-      - description: Todo ID
+      - description: ID de la tarea
         in: path
         name: id
         required: true
         type: integer
+      - description: Solicitud de actualización de estado de tarea
+        in: body
+        name: status
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateTodoStatusRequest'
       produces:
       - application/json
       responses:
         "200":
-          description: Todo marked as completed
+          description: Estado de la tarea actualizado
           schema:
             $ref: '#/definitions/models.CompleteTodoResponse'
         "400":
-          description: Bad request
+          description: Solicitud incorrecta
           schema:
             $ref: '#/definitions/models.ErrorResponse'
         "401":
-          description: Unauthorized
+          description: No autorizado
           schema:
             $ref: '#/definitions/models.ErrorResponse'
         "403":
-          description: Forbidden
+          description: Prohibido
           schema:
             $ref: '#/definitions/models.ErrorResponse'
         "404":
-          description: Todo not found
+          description: Tarea no encontrada
           schema:
             $ref: '#/definitions/models.ErrorResponse'
         "500":
-          description: Internal server error
+          description: Error interno del servidor
           schema:
             $ref: '#/definitions/models.ErrorResponse'
       security:
       - BearerAuth: []
-      summary: Mark todo as completed
+      summary: Actualizar estado de la tarea
       tags:
-      - Todos
+      - Tareas
+    put:
+      consumes:
+      - application/json
+      description: Actualizar título y descripción de la tarea (solo el creador puede
+        actualizar sus tareas)
+      parameters:
+      - description: ID de la tarea
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Solicitud de actualización de tarea
+        in: body
+        name: todo
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateTodoRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Tarea actualizada exitosamente
+          schema:
+            $ref: '#/definitions/models.Todo'
+        "400":
+          description: Solicitud incorrecta
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: No autorizado
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Prohibido
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
+          description: Tarea no encontrada
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Error interno del servidor
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Actualizar detalles de la tarea
+      tags:
+      - Tareas
+  /ws:
+    get:
+      description: Actualiza la conexión HTTP a una conexión WebSocket para comunicación
+        en tiempo real.
+      responses:
+        "101":
+          description: Cambiando Protocolos
+        "401":
+          description: No autorizado
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Conexión WebSocket
+      tags:
+      - Mensajes
 securityDefinitions:
   BearerAuth:
-    description: Type "Bearer" followed by a space and JWT token.
+    description: Escriba "Bearer" seguido de un espacio y el token JWT.
     in: header
     name: Authorization
     type: apiKey
