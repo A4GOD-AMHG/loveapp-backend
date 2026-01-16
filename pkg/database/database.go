@@ -13,43 +13,36 @@ import (
 
 var DB *sql.DB
 
-// InitDB initializes the database connection
 func InitDB() error {
 	var err error
 
 	dbPath := config.AppConfig.GetDatabasePath()
 
-	// Create directory if it doesn't exist
 	dir := filepath.Dir(dbPath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
-		return fmt.Errorf("failed to create database directory: %w", err)
+		return fmt.Errorf("error al crear el directorio de la base de datos: %w", err)
 	}
 
-	// Open SQLite database
 	DB, err = sql.Open("sqlite3", dbPath)
 	if err != nil {
-		return fmt.Errorf("failed to open database: %w", err)
+		return fmt.Errorf("error al abrir la base de datos: %w", err)
 	}
 
-	// Test the connection
 	if err = DB.Ping(); err != nil {
-		return fmt.Errorf("failed to ping database: %w", err)
+		return fmt.Errorf("error al hacer ping a la base de datos: %w", err)
 	}
 
-	// Set connection pool settings
-	DB.SetMaxOpenConns(1) // SQLite works best with a single connection
+	DB.SetMaxOpenConns(1)
 	DB.SetMaxIdleConns(1)
 
-	// Enable foreign keys
 	if _, err = DB.Exec("PRAGMA foreign_keys = ON"); err != nil {
-		return fmt.Errorf("failed to enable foreign keys: %w", err)
+		return fmt.Errorf("error al habilitar claves foráneas: %w", err)
 	}
 
-	log.Printf("SQLite database connection established successfully at: %s", dbPath)
+	log.Printf("Conexión a base de datos SQLite establecida exitosamente en: %s", dbPath)
 	return nil
 }
 
-// CloseDB closes the database connection
 func CloseDB() error {
 	if DB != nil {
 		return DB.Close()
