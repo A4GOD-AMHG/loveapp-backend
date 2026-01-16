@@ -4,32 +4,27 @@ import (
 	"os"
 )
 
-// Config holds all configuration for the application
 type Config struct {
 	Database DatabaseConfig
 	JWT      JWTConfig
 	Server   ServerConfig
 }
 
-// DatabaseConfig holds database configuration
 type DatabaseConfig struct {
-	Path string // SQLite database file path
+	Path string
 }
 
-// JWTConfig holds JWT configuration
 type JWTConfig struct {
 	Secret []byte
 }
 
-// ServerConfig holds server configuration
 type ServerConfig struct {
 	Port string
 }
 
 var AppConfig *Config
 
-// InitConfig initializes the application configuration
-func InitConfig() {
+func LoadConfig() error {
 	AppConfig = &Config{
 		Database: DatabaseConfig{
 			Path: getEnv("DB_PATH", "./data/loveapp.db"),
@@ -41,14 +36,23 @@ func InitConfig() {
 			Port: getEnv("SERVER_PORT", "8080"),
 		},
 	}
+	return nil
 }
 
-// GetDatabasePath returns the database file path
 func (c *Config) GetDatabasePath() string {
 	return c.Database.Path
 }
 
-// getEnv gets an environment variable with a fallback value
+func (c *Config) GetServerPort() string {
+	if c.Server.Port == "" {
+		return ":8080"
+	}
+	if c.Server.Port[0] != ':' {
+		return ":" + c.Server.Port
+	}
+	return c.Server.Port
+}
+
 func getEnv(key, fallback string) string {
 	if value := os.Getenv(key); value != "" {
 		return value

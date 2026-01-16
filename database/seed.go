@@ -7,33 +7,32 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// Seed creates initial data in the database
 func Seed() error {
-	users := []string{"anyel", "alexis"}
-	
-	for _, username := range users {
+	type userSeed struct {
+		Name     string
+		Username string
+	}
+	users := []userSeed{
+		{Name: "Anyel", Username: "anyel"},
+		{Name: "Alexis", Username: "alexis"},
+	}
+	for _, u := range users {
 		var id int
-		err := database.DB.QueryRow("SELECT id FROM users WHERE username = $1", username).Scan(&id)
+		err := database.DB.QueryRow("SELECT id FROM users WHERE username = $1", u.Username).Scan(&id)
 		if err == nil {
-			log.Printf("User %s already exists, skipping...", username)
+			log.Printf("El usuario %s ya existe, omitiendo...", u.Username)
 			continue
 		}
-		
-		// Hash the default password
 		hash, err := bcrypt.GenerateFromPassword([]byte("password"), bcrypt.DefaultCost)
 		if err != nil {
 			return err
 		}
-		
-		// Insert the user
-		_, err = database.DB.Exec("INSERT INTO users (username, password) VALUES ($1, $2)", username, string(hash))
+		_, err = database.DB.Exec("INSERT INTO users (username, name, password) VALUES ($1, $2, $3)", u.Username, u.Name, string(hash))
 		if err != nil {
 			return err
 		}
-		
-		log.Printf("Created user: %s with password: password", username)
+		log.Printf("Usuario creado: %s (%s) con contraseña: password", u.Username, u.Name)
 	}
-	
-	log.Println("Database seeding completed successfully")
+	log.Println("Sembrado de base de datos completado exitosamente")
 	return nil
 }
