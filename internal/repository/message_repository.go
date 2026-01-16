@@ -14,7 +14,7 @@ type MessageRepository interface {
 	UpdateContent(id int64, content string) error
 	UpdateStatus(id int64, status string) error
 	Delete(id int64) error
-	GetConversation(user1ID, user2ID uint) ([]models.Message, error)
+	GetConversation(user1ID, user2ID uint, page, perPage int) ([]models.Message, error)
 }
 
 type messageRepository struct {
@@ -44,11 +44,23 @@ func (r *messageRepository) Create(message *models.Message) (int64, error) {
 }
 
 func (r *messageRepository) FindByID(id int64) (*models.Message, error) {
-	query := `SELECT id, sender_id, receiver_id, content, status, created_at, updated_at FROM messages WHERE id = ?`
+	query := `
+		SELECT 
+			m.id, m.sender_id, m.receiver_id, m.content, m.status, m.created_at, m.updated_at,
+			s.id, s.name, s.username,
+			r.id, r.name, r.username
+		FROM messages m
+		JOIN users s ON m.sender_id = s.id
+		JOIN users r ON m.receiver_id = r.id
+		WHERE m.id = ?`
 	row := r.db.QueryRow(query, id)
 
 	var msg models.Message
-	err := row.Scan(&msg.ID, &msg.SenderID, &msg.ReceiverID, &msg.Content, &msg.Status, &msg.CreatedAt, &msg.UpdatedAt)
+	err := row.Scan(
+		&msg.ID, &msg.SenderID, &msg.ReceiverID, &msg.Content, &msg.Status, &msg.CreatedAt, &msg.UpdatedAt,
+		&msg.Sender.ID, &msg.Sender.Name, &msg.Sender.Username,
+		&msg.Receiver.ID, &msg.Receiver.Name, &msg.Receiver.Username,
+	)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
@@ -76,12 +88,27 @@ func (r *messageRepository) Delete(id int64) error {
 	return err
 }
 
-func (r *messageRepository) GetConversation(user1ID, user2ID uint) ([]models.Message, error) {
-	query := `SELECT id, sender_id, receiver_id, content, status, created_at, updated_at
-			  FROM messages
-			  WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?)
-			  ORDER BY created_at ASC`
-	rows, err := r.db.Query(query, user1ID, user2ID, user2ID, user1ID)
+func (r *messageRepository) GetConversation(user1ID, user2ID uint, page, perPage int) ([]models.Message, error) {
+	if page < 1 {
+		page = 1
+	}
+	if perPage < 1 {
+		perPage = 10
+	}
+	offset := (page - 1) * perPage
+
+	query := `
+		SELECT 
+			m.id, m.sender_id, m.receiver_id, m.content, m.status, m.created_at, m.updated_at,
+			s.id, s.name, s.username,
+			r.id, r.name, r.username
+		FROM messages m
+		JOIN users s ON m.sender_id = s.id
+		JOIN users r ON m.receiver_id = r.id
+		WHERE (m.sender_id = ? AND m.receiver_id = ?) OR (m.sender_id = ? AND m.receiver_id = ?)
+		ORDER BY m.created_at DESC
+		LIMIT ? OFFSET ?`
+	rows, err := r.db.Query(query, user1ID, user2ID, user2ID, user1ID, perPage, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +117,11 @@ func (r *messageRepository) GetConversation(user1ID, user2ID uint) ([]models.Mes
 	var messages []models.Message
 	for rows.Next() {
 		var msg models.Message
-		err := rows.Scan(&msg.ID, &msg.SenderID, &msg.ReceiverID, &msg.Content, &msg.Status, &msg.CreatedAt, &msg.UpdatedAt)
+		err := rows.Scan(
+			&msg.ID, &msg.SenderID, &msg.ReceiverID, &msg.Content, &msg.Status, &msg.CreatedAt, &msg.UpdatedAt,
+			&msg.Sender.ID, &msg.Sender.Name, &msg.Sender.Username,
+			&msg.Receiver.ID, &msg.Receiver.Name, &msg.Receiver.Username,
+		)
 		if err != nil {
 			return nil, err
 		}

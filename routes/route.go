@@ -14,14 +14,11 @@ func SetupRoutes(hub *websocket.Hub) *mux.Router {
 	r := mux.NewRouter()
 	authController := controllers.NewAuthController()
 	todoController := controllers.NewTodoController()
-	healthController := controllers.NewHealthController()
 
 	r.Use(middleware.CORSMiddleware)
 	r.Use(middleware.LoggingMiddleware)
 
 	r.PathPrefix("/swagger/").Handler(httpSwagger.WrapHandler)
-
-	r.HandleFunc("/health", healthController.HealthCheck).Methods("GET")
 
 	authRoutes := r.PathPrefix("/auth").Subrouter()
 	authRoutes.HandleFunc("/login", authController.Login).Methods("POST")
@@ -46,8 +43,10 @@ func SetupRoutes(hub *websocket.Hub) *mux.Router {
 	protectedRoutes.HandleFunc("/ws", messageController.ServeWS)
 	protectedRoutes.HandleFunc("/messages", messageController.SendMessage).Methods("POST")
 	protectedRoutes.HandleFunc("/messages/{id}", messageController.EditMessage).Methods("PUT")
+	protectedRoutes.HandleFunc("/messages/{id}/read", messageController.MarkAsRead).Methods("PATCH")
+	protectedRoutes.HandleFunc("/messages/{id}/delivered", messageController.MarkAsDelivered).Methods("PATCH")
 	protectedRoutes.HandleFunc("/messages/{id}", messageController.DeleteMessage).Methods("DELETE")
-	protectedRoutes.HandleFunc("/messages/conversation/{userId}", messageController.GetConversation).Methods("GET")
+	protectedRoutes.HandleFunc("/messages/conversation", messageController.GetConversation).Methods("GET")
 
 	return r
 }

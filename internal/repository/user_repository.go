@@ -20,7 +20,7 @@ func NewUserRepository() *UserRepository {
 
 func (r *UserRepository) FindByUsername(username string) (*models.User, error) {
 	user := &models.User{}
-	query := `SELECT id, name, username, password, created_at, updated_at FROM users WHERE username = $1`
+	query := `SELECT id, name, username, password, created_at, updated_at FROM users WHERE username = ?`
 
 	err := r.db.QueryRow(query, username).Scan(
 		&user.ID,
@@ -43,7 +43,7 @@ func (r *UserRepository) FindByUsername(username string) (*models.User, error) {
 
 func (r *UserRepository) FindByID(id int64) (*models.User, error) {
 	user := &models.User{}
-	query := `SELECT id, name, username, created_at, updated_at FROM users WHERE id = $1`
+	query := `SELECT id, name, username, created_at, updated_at FROM users WHERE id = ?`
 
 	err := r.db.QueryRow(query, id).Scan(
 		&user.ID,
@@ -64,7 +64,7 @@ func (r *UserRepository) FindByID(id int64) (*models.User, error) {
 }
 
 func (r *UserRepository) UpdatePassword(userID int64, hashedPassword string) error {
-	query := `UPDATE users SET password = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`
+	query := `UPDATE users SET password = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
 
 	result, err := r.db.Exec(query, hashedPassword, userID)
 	if err != nil {
@@ -85,7 +85,7 @@ func (r *UserRepository) UpdatePassword(userID int64, hashedPassword string) err
 
 func (r *UserRepository) GetPasswordHash(userID int64) (string, error) {
 	var passwordHash string
-	query := `SELECT password FROM users WHERE id = $1`
+	query := `SELECT password FROM users WHERE id = ?`
 
 	err := r.db.QueryRow(query, userID).Scan(&passwordHash)
 	if err != nil {
@@ -96,4 +96,26 @@ func (r *UserRepository) GetPasswordHash(userID int64) (string, error) {
 	}
 
 	return passwordHash, nil
+}
+
+func (r *UserRepository) GetOtherUser(currentUserID uint) (*models.User, error) {
+	user := &models.User{}
+	query := `SELECT id, name, username, created_at, updated_at FROM users WHERE id != ? LIMIT 1`
+
+	err := r.db.QueryRow(query, currentUserID).Scan(
+		&user.ID,
+		&user.Name,
+		&user.Username,
+		&user.CreatedAt,
+		&user.UpdatedAt,
+	)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("other user not found")
+		}
+		return nil, err
+	}
+
+	return user, nil
 }

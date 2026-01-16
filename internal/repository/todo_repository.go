@@ -21,28 +21,22 @@ func NewTodoRepository() *TodoRepository {
 
 func (r *TodoRepository) Create(todo *models.Todo) (*models.Todo, error) {
 	query := `
-		INSERT INTO todos (title, description, creator_id)
-		VALUES ($1, $2, $3)
-		RETURNING id, created_at, updated_at`
+		INSERT INTO todos (title, description, creator_id, created_at, updated_at)
+		VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
 
-	err := r.db.QueryRow(query, todo.Title, todo.Description, todo.CreatorID).Scan(
-		&todo.ID,
-		&todo.CreatedAt,
-		&todo.UpdatedAt,
-	)
-
+	res, err := r.db.Exec(query, todo.Title, todo.Description, todo.CreatorID)
 	if err != nil {
 		return nil, err
 	}
 
-	userRepo := NewUserRepository()
-	user, err := userRepo.FindByID(todo.CreatorID)
+	id, err := res.LastInsertId()
 	if err != nil {
 		return nil, err
 	}
-	todo.CreatorUsername = user.Username
+	todo.ID = id
 
-	return todo, nil
+	// Retrieve the created todo to get timestamps and other fields
+	return r.FindByID(id)
 }
 
 func (r *TodoRepository) FindByID(id int64) (*models.Todo, error) {
@@ -52,7 +46,7 @@ func (r *TodoRepository) FindByID(id int64) (*models.Todo, error) {
 		       t.completed_anyel, t.completed_alexis, t.created_at, t.updated_at
 		FROM todos t
 		JOIN users u ON u.id = t.creator_id
-		WHERE t.id = $1`
+		WHERE t.id = ?`
 
 	err := r.db.QueryRow(query, id).Scan(
 		&todo.ID,
@@ -87,19 +81,16 @@ func (r *TodoRepository) GetTodos(status models.TodoStatus, creatorID *int64, re
 		JOIN users u ON u.id = t.creator_id`
 
 	conditions := []string{}
-	argCount := 1
 
 	if creatorID != nil {
-		conditions = append(conditions, fmt.Sprintf("t.creator_id = $%d", argCount))
+		conditions = append(conditions, "t.creator_id = ?")
 		args = append(args, *creatorID)
-		argCount++
 	}
 
 	if search != "" {
-		conditions = append(conditions, fmt.Sprintf("(t.title ILIKE $%d OR t.description ILIKE $%d)", argCount, argCount))
+		conditions = append(conditions, "(t.title LIKE ? OR t.description LIKE ?)")
 		searchParam := "%" + search + "%"
-		args = append(args, searchParam)
-		argCount++
+		args = append(args, searchParam, searchParam)
 	}
 
 	switch status {
@@ -137,7 +128,8 @@ func (r *TodoRepository) GetTodos(status models.TodoStatus, creatorID *int64, re
 		query += " ORDER BY t.created_at DESC"
 	}
 
-	query += fmt.Sprintf(" LIMIT %d OFFSET %d", limit, offset)
+	query += " LIMIT ? OFFSET ?"
+	args = append(args, limit, offset)
 
 	rows, err := r.db.Query(query, args...)
 	if err != nil {
@@ -171,7 +163,7 @@ func (r *TodoRepository) GetTodos(status models.TodoStatus, creatorID *int64, re
 }
 
 func (r *TodoRepository) Update(todo *models.Todo) (*models.Todo, error) {
-	query := `UPDATE todos SET title = $1, description = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3`
+	query := `UPDATE todos SET title = ?, description = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
 	_, err := r.db.Exec(query, todo.Title, todo.Description, todo.ID)
 	if err != nil {
 		return nil, err
@@ -184,9 +176,9 @@ func (r *TodoRepository) UpdateCompletion(todoID int64, username string, complet
 
 	switch username {
 	case "anyel":
-		query = `UPDATE todos SET completed_anyel = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`
+		query = `UPDATE todos SET completed_anyel = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
 	case "alexis":
-		query = `UPDATE todos SET completed_alexis = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`
+		query = `UPDATE todos SET completed_alexis = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
 	default:
 		return nil, fmt.Errorf("invalid username for completion update")
 	}
@@ -209,7 +201,7 @@ func (r *TodoRepository) UpdateCompletion(todoID int64, username string, complet
 }
 
 func (r *TodoRepository) Delete(id int64) error {
-	query := `DELETE FROM todos WHERE id = $1`
+	query := `DELETE FROM todos WHERE id = ?`
 
 	result, err := r.db.Exec(query, id)
 	if err != nil {
@@ -230,7 +222,7 @@ func (r *TodoRepository) Delete(id int64) error {
 
 func (r *TodoRepository) GetCreatorID(todoID int64) (int64, error) {
 	var creatorID int64
-	query := `SELECT creator_id FROM todos WHERE id = $1`
+	query := `SELECT creator_id FROM todos WHERE id = ?`
 
 	err := r.db.QueryRow(query, todoID).Scan(&creatorID)
 	if err != nil {
