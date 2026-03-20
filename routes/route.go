@@ -19,6 +19,7 @@ func SetupRoutes(hub *websocket.Hub) *mux.Router {
 
 	// Instanciar los controladores
 	authController := controllers.NewAuthController()
+	healthController := controllers.NewHealthController()
 	todoController := controllers.NewTodoController()
 
 	// Aplicar middlewares globales a todas las rutas
@@ -27,6 +28,7 @@ func SetupRoutes(hub *websocket.Hub) *mux.Router {
 
 	// Ruta de documentación Swagger UI (pública)
 	r.PathPrefix("/swagger/").Handler(httpSwagger.WrapHandler)
+	r.HandleFunc("/health", healthController.Check).Methods("GET")
 
 	// Rutas públicas de autenticación (sin middleware de auth)
 	authRoutes := r.PathPrefix("/auth").Subrouter()
