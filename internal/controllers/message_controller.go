@@ -1,3 +1,4 @@
+// Paquete controllers contiene los manejadores HTTP de la aplicación.
 package controllers
 
 import (
@@ -12,11 +13,13 @@ import (
 	"github.com/gorilla/mux"
 )
 
+// MessageController maneja los endpoints relacionados con mensajes y WebSocket.
 type MessageController struct {
-	service services.MessageService
-	hub     *websocket.Hub
+	service services.MessageService // Servicio de mensajes con la lógica de negocio
+	hub     *websocket.Hub          // Hub de WebSocket para difundir eventos en tiempo real
 }
 
+// NewMessageController crea y retorna una nueva instancia de MessageController.
 func NewMessageController(service services.MessageService, hub *websocket.Hub) *MessageController {
 	return &MessageController{
 		service: service,
@@ -33,16 +36,19 @@ func NewMessageController(service services.MessageService, hub *websocket.Hub) *
 // @Failure 401 {object} models.ErrorResponse "No autorizado"
 // @Router /ws [get]
 func (h *MessageController) ServeWS(w http.ResponseWriter, r *http.Request) {
+	// Obtener el usuario autenticado desde el contexto de la solicitud
 	user, ok := r.Context().Value("user").(*models.User)
 	if !ok {
 		response.Unauthorized(w, "Tu sesión ha expirado, por favor inicia sesión de nuevo.")
 		return
 	}
+	// Delegar la actualización del protocolo al paquete websocket
 	websocket.ServeWs(h.hub, w, r, uint(user.ID))
 }
 
+// sendMessageRequest representa el cuerpo de la solicitud para enviar un mensaje.
 type sendMessageRequest struct {
-	Content string `json:"content"`
+	Content string `json:"content"` // Contenido del mensaje a enviar
 }
 
 // SendMessage maneja el envío de un nuevo mensaje.
@@ -59,23 +65,27 @@ type sendMessageRequest struct {
 // @Failure 500 {object} models.ErrorResponse "Error interno del servidor"
 // @Router /messages [post]
 func (h *MessageController) SendMessage(w http.ResponseWriter, r *http.Request) {
+	// Verificar que el usuario esté autenticado en el contexto
 	user, ok := r.Context().Value("user").(*models.User)
 	if !ok {
 		response.Unauthorized(w, "Tu sesión ha expirado, por favor inicia sesión de nuevo.")
 		return
 	}
 
+	// Decodificar el cuerpo JSON con el contenido del mensaje
 	var req sendMessageRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		response.BadRequest(w, "Por favor, revisa los datos del mensaje.")
 		return
 	}
 
+	// Validar que el mensaje no esté vacío
 	if req.Content == "" {
 		response.BadRequest(w, "Falta el contenido del mensaje.")
 		return
 	}
 
+	// Enviar el mensaje a través del servicio
 	msg, err := h.service.SendMessage(uint(user.ID), req.Content)
 	if err != nil {
 		if err.Error() == "failed to determine receiver: other user not found" {
@@ -89,8 +99,9 @@ func (h *MessageController) SendMessage(w http.ResponseWriter, r *http.Request) 
 	response.JSON(w, http.StatusCreated, msg)
 }
 
+// editMessageRequest representa el cuerpo de la solicitud para editar un mensaje.
 type editMessageRequest struct {
-	Content string `json:"content"`
+	Content string `json:"content"` // Nuevo contenido del mensaje
 }
 
 // EditMessage maneja la edición de un mensaje existente.
@@ -110,12 +121,14 @@ type editMessageRequest struct {
 // @Failure 500 {object} models.ErrorResponse "Error interno del servidor"
 // @Router /messages/{id} [put]
 func (h *MessageController) EditMessage(w http.ResponseWriter, r *http.Request) {
+	// Obtener el usuario autenticado desde el contexto
 	user, ok := r.Context().Value("user").(*models.User)
 	if !ok {
 		response.Unauthorized(w, "Tu sesión ha expirado, por favor inicia sesión de nuevo.")
 		return
 	}
 
+	// Parsear el ID del mensaje desde los parámetros de la URL
 	vars := mux.Vars(r)
 	id, err := strconv.ParseInt(vars["id"], 10, 64)
 	if err != nil {
@@ -123,17 +136,20 @@ func (h *MessageController) EditMessage(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	// Decodificar el nuevo contenido del mensaje
 	var req editMessageRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		response.BadRequest(w, "Por favor, revisa el contenido del mensaje.")
 		return
 	}
 
+	// Validar que el nuevo contenido no esté vacío
 	if req.Content == "" {
 		response.BadRequest(w, "El contenido del mensaje no puede estar vacío.")
 		return
 	}
 
+	// Delegar la edición al servicio con validaciones de propiedad y tiempo
 	msg, err := h.service.EditMessage(uint(user.ID), id, req.Content)
 	if err != nil {
 		if err.Error() == "message not found" {
@@ -165,12 +181,14 @@ func (h *MessageController) EditMessage(w http.ResponseWriter, r *http.Request) 
 // @Failure 500 {object} models.ErrorResponse "Error interno del servidor"
 // @Router /messages/{id} [delete]
 func (h *MessageController) DeleteMessage(w http.ResponseWriter, r *http.Request) {
+	// Obtener el usuario autenticado desde el contexto
 	user, ok := r.Context().Value("user").(*models.User)
 	if !ok {
 		response.Unauthorized(w, "Tu sesión ha expirado, por favor inicia sesión de nuevo.")
 		return
 	}
 
+	// Parsear el ID del mensaje desde los parámetros de la URL
 	vars := mux.Vars(r)
 	id, err := strconv.ParseInt(vars["id"], 10, 64)
 	if err != nil {
@@ -178,6 +196,7 @@ func (h *MessageController) DeleteMessage(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	// Delegar la eliminación al servicio con validaciones de propiedad y tiempo
 	err = h.service.DeleteMessage(uint(user.ID), id)
 	if err != nil {
 		if err.Error() == "message not found" {
@@ -192,6 +211,7 @@ func (h *MessageController) DeleteMessage(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	// Responder con 204 No Content al eliminar exitosamente
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -209,12 +229,14 @@ func (h *MessageController) DeleteMessage(w http.ResponseWriter, r *http.Request
 // @Failure 500 {object} models.ErrorResponse "Error interno del servidor"
 // @Router /messages/{id}/read [patch]
 func (h *MessageController) MarkAsRead(w http.ResponseWriter, r *http.Request) {
+	// Obtener el usuario autenticado desde el contexto
 	user, ok := r.Context().Value("user").(*models.User)
 	if !ok {
 		response.Unauthorized(w, "Tu sesión ha expirado, por favor inicia sesión de nuevo.")
 		return
 	}
 
+	// Parsear el ID del mensaje desde los parámetros de la URL
 	vars := mux.Vars(r)
 	id, err := strconv.ParseInt(vars["id"], 10, 64)
 	if err != nil {
@@ -222,6 +244,7 @@ func (h *MessageController) MarkAsRead(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Delegar la marcación como leído al servicio
 	err = h.service.MarkAsRead(uint(user.ID), id)
 	if err != nil {
 		if err.Error() == "message not found" {
@@ -251,12 +274,14 @@ func (h *MessageController) MarkAsRead(w http.ResponseWriter, r *http.Request) {
 // @Failure 500 {object} models.ErrorResponse "Error interno del servidor"
 // @Router /messages/{id}/delivered [patch]
 func (h *MessageController) MarkAsDelivered(w http.ResponseWriter, r *http.Request) {
+	// Obtener el usuario autenticado desde el contexto
 	user, ok := r.Context().Value("user").(*models.User)
 	if !ok {
 		response.Unauthorized(w, "Tu sesión ha expirado, por favor inicia sesión de nuevo.")
 		return
 	}
 
+	// Parsear el ID del mensaje desde los parámetros de la URL
 	vars := mux.Vars(r)
 	id, err := strconv.ParseInt(vars["id"], 10, 64)
 	if err != nil {
@@ -264,6 +289,7 @@ func (h *MessageController) MarkAsDelivered(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	// Delegar la marcación como entregado al servicio
 	err = h.service.MarkAsDelivered(uint(user.ID), id)
 	if err != nil {
 		if err.Error() == "message not found" {
@@ -292,23 +318,26 @@ func (h *MessageController) MarkAsDelivered(w http.ResponseWriter, r *http.Reque
 // @Failure 500 {object} models.ErrorResponse "Error interno del servidor"
 // @Router /messages/conversation [get]
 func (h *MessageController) GetConversation(w http.ResponseWriter, r *http.Request) {
+	// Obtener el usuario autenticado desde el contexto
 	user, ok := r.Context().Value("user").(*models.User)
 	if !ok {
 		response.Unauthorized(w, "Tu sesión ha expirado, por favor inicia sesión de nuevo.")
 		return
 	}
 
+	// Leer los parámetros de paginación desde la query string
 	pageStr := r.URL.Query().Get("page")
 	perPageStr := r.URL.Query().Get("per_page")
 
+	// Convertir a enteros (si fallan, el servicio usará los valores predeterminados)
 	page, _ := strconv.Atoi(pageStr)
 	perPage, _ := strconv.Atoi(perPageStr)
 
+	// Obtener el historial de conversación a través del servicio
 	messages, err := h.service.GetConversation(uint(user.ID), page, perPage)
 	if err != nil {
 		if err.Error() == "failed to determine other user: other user not found" {
-			// If no other user exists, return empty list or specific error?
-			// Let's return empty list for now as a valid conversation state
+			// Si no existe el otro usuario, retornar lista vacía como estado válido
 			response.JSON(w, http.StatusOK, []models.Message{})
 			return
 		}
@@ -317,4 +346,23 @@ func (h *MessageController) GetConversation(w http.ResponseWriter, r *http.Reque
 	}
 
 	response.JSON(w, http.StatusOK, messages)
+}
+
+// GetUnreadCount retorna la cantidad total de mensajes no leídos del usuario autenticado.
+func (h *MessageController) GetUnreadCount(w http.ResponseWriter, r *http.Request) {
+	user, ok := r.Context().Value("user").(*models.User)
+	if !ok {
+		response.Unauthorized(w, "Tu sesión ha expirado, por favor inicia sesión de nuevo.")
+		return
+	}
+
+	unreadCount, err := h.service.GetUnreadCount(uint(user.ID))
+	if err != nil {
+		response.InternalServerError(w, "No pudimos calcular tus mensajes no leídos.")
+		return
+	}
+
+	response.JSON(w, http.StatusOK, models.UnreadCountResponse{
+		UnreadCount: unreadCount,
+	})
 }

@@ -1,3 +1,4 @@
+// Paquete controllers contiene los manejadores HTTP de la aplicación.
 package controllers
 
 import (
@@ -11,10 +12,13 @@ import (
 	"github.com/gorilla/mux"
 )
 
+// TodoController maneja los endpoints relacionados con la gestión de tareas.
 type TodoController struct {
-	todoService *services.TodoService
+	todoService *services.TodoService // Servicio de tareas con la lógica de negocio
 }
 
+// NewTodoController crea y retorna una nueva instancia de TodoController
+// con su servicio de tareas ya inicializado.
 func NewTodoController() *TodoController {
 	return &TodoController{
 		todoService: services.NewTodoService(),
@@ -36,15 +40,18 @@ func NewTodoController() *TodoController {
 // @Failure 500 {object} models.ErrorResponse "Error interno del servidor"
 // @Router /todos [post]
 func (h *TodoController) CreateTodo(w http.ResponseWriter, r *http.Request) {
+	// Obtener el usuario autenticado desde el contexto (inyectado por el middleware)
 	user := r.Context().Value("user").(*models.User)
 
 	var req models.CreateTodoRequest
 
+	// Decodificar el cuerpo JSON con los datos de la nueva tarea
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		response.BadRequest(w, "Por favor, revisa los datos ingresados.")
 		return
 	}
 
+	// Delegar la creación al servicio con validación de título
 	createResponse, err := h.todoService.CreateTodo(user.ID, user.Username, &req)
 	if err != nil {
 		if err.Error() == "el título es requerido" {
@@ -76,8 +83,10 @@ func (h *TodoController) CreateTodo(w http.ResponseWriter, r *http.Request) {
 // @Failure 500 {object} models.ErrorResponse "Error interno del servidor"
 // @Router /todos [get]
 func (h *TodoController) GetTodos(w http.ResponseWriter, r *http.Request) {
+	// Obtener el usuario autenticado desde el contexto
 	user := r.Context().Value("user").(*models.User)
 
+	// Leer los filtros y parámetros de paginación desde la query string
 	status := r.URL.Query().Get("status")
 	creatorID := r.URL.Query().Get("creator_id")
 	sortOrder := r.URL.Query().Get("sort_order")
@@ -85,6 +94,7 @@ func (h *TodoController) GetTodos(w http.ResponseWriter, r *http.Request) {
 	page := r.URL.Query().Get("page")
 	limit := r.URL.Query().Get("limit")
 
+	// Delegar la consulta filtrada al servicio de tareas
 	listResponse, err := h.todoService.GetTodos(status, creatorID, user.Username, sortOrder, search, page, limit)
 	if err != nil {
 		if err.Error() == "ID de creador inválido" {
@@ -115,8 +125,10 @@ func (h *TodoController) GetTodos(w http.ResponseWriter, r *http.Request) {
 // @Failure 500 {object} models.ErrorResponse "Error interno del servidor"
 // @Router /todos/{id} [put]
 func (h *TodoController) UpdateTodo(w http.ResponseWriter, r *http.Request) {
+	// Obtener el ID del usuario autenticado desde el contexto
 	userID := r.Context().Value("user_id").(int64)
 
+	// Parsear el ID de la tarea desde los parámetros de la URL
 	vars := mux.Vars(r)
 	todoIDStr := vars["id"]
 	todoID, err := strconv.ParseInt(todoIDStr, 10, 64)
@@ -125,17 +137,20 @@ func (h *TodoController) UpdateTodo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Decodificar el cuerpo JSON con los nuevos datos de la tarea
 	var req models.UpdateTodoRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		response.BadRequest(w, "Por favor, revisa los datos ingresados.")
 		return
 	}
 
+	// Validar que el título no esté vacío
 	if req.Title == "" {
 		response.BadRequest(w, "El título de la tarea no puede estar vacío.")
 		return
 	}
 
+	// Delegar la actualización al servicio (solo el creador puede editar)
 	updatedTodo, err := h.todoService.UpdateTodo(todoID, userID, &req)
 	if err != nil {
 		if err.Error() == "todo no encontrado" {
@@ -170,8 +185,10 @@ func (h *TodoController) UpdateTodo(w http.ResponseWriter, r *http.Request) {
 // @Failure 500 {object} models.ErrorResponse "Error interno del servidor"
 // @Router /todos/{id} [patch]
 func (h *TodoController) UpdateTodoStatus(w http.ResponseWriter, r *http.Request) {
+	// Obtener el nombre de usuario autenticado desde el contexto
 	username := r.Context().Value("username").(string)
 
+	// Parsear el ID de la tarea desde los parámetros de la URL
 	vars := mux.Vars(r)
 	todoIDStr := vars["id"]
 	todoID, err := strconv.ParseInt(todoIDStr, 10, 64)
@@ -180,12 +197,14 @@ func (h *TodoController) UpdateTodoStatus(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	// Decodificar el nuevo estado (completado o no) desde el cuerpo JSON
 	var req models.UpdateTodoStatusRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		response.BadRequest(w, "Por favor, revisa los datos ingresados.")
 		return
 	}
 
+	// Delegar la actualización de estado al servicio con validaciones de usuario
 	statusResponse, err := h.todoService.UpdateTodoStatus(todoID, username, req.Completed)
 	if err != nil {
 		if err.Error() == "todo no encontrado" {
@@ -222,8 +241,10 @@ func (h *TodoController) UpdateTodoStatus(w http.ResponseWriter, r *http.Request
 // @Failure 500 {object} models.ErrorResponse "Error interno del servidor"
 // @Router /todos/{id} [delete]
 func (h *TodoController) DeleteTodo(w http.ResponseWriter, r *http.Request) {
+	// Obtener el ID del usuario autenticado desde el contexto
 	userID := r.Context().Value("user_id").(int64)
 
+	// Parsear el ID de la tarea desde los parámetros de la URL
 	vars := mux.Vars(r)
 	todoIDStr := vars["id"]
 	todoID, err := strconv.ParseInt(todoIDStr, 10, 64)
@@ -232,6 +253,7 @@ func (h *TodoController) DeleteTodo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Delegar la eliminación al servicio (solo el creador puede eliminar)
 	err = h.todoService.DeleteTodo(todoID, userID)
 	if err != nil {
 		if err.Error() == "todo no encontrado" {
