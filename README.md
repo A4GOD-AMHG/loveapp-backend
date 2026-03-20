@@ -8,7 +8,7 @@ Este es el backend de **LoveApp**, una aplicación móvil privada diseñada para
   <img src="https://raw.githubusercontent.com/A4GOD-AMHG/Utils-for-repos/main/icons/go/go-original-wordmark.svg" alt="Go" width="65" height="65" />
   <img src="https://raw.githubusercontent.com/A4GOD-AMHG/Utils-for-repos/main/icons/sqlite/sqlite-original.svg" alt="SQLite" width="65" height="65" />
   <img src="https://raw.githubusercontent.com/A4GOD-AMHG/Utils-for-repos/main/icons/swagger/swagger-original.svg" alt="Swagger" width="65" height="65" />
-  <img src="https://raw.githubusercontent.com/A4GOD-AMHG/Utils-for-repos/main/icons/websocket/websocket-original.svg" alt="WebSocket" width="65" height="65" />
+  <img src="https://raw.githubusercontent.com/A4GOD-AMHG/Utils-for-repos/main/icons/socketio/socketio-original.svg" alt="socketio" width="65" height="65" />
 </div>
 
 ## Características

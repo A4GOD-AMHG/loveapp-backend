@@ -46,6 +46,11 @@ clean: ## Limpiar binarios compilados y la base de datos
 	rm -f $(DB_PATH)
 	@echo "✅ Limpieza finalizada."
 
+test: ## Ejecutar todos los tests unitarios con salida detallada
+	@echo "🧪 Ejecutando tests unitarios..."
+	go test -v -count=1 ./...
+	@echo "✅ Tests finalizados."
+
 env: ## Crear .env desde example.env si no existe
 	@if [ ! -f .env ]; then \
 		cp example.env .env; \
