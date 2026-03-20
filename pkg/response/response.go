@@ -1,3 +1,5 @@
+// Paquete response provee funciones helper para construir y enviar respuestas HTTP
+// con formato JSON estándar en toda la aplicación.
 package response
 
 import (
@@ -7,14 +9,15 @@ import (
 	"github.com/A4GOD-AMHG/LoveApp-Backend/internal/models"
 )
 
-// JSON sends a JSON response with the given status code and data
+// JSON serializa el dato proporcionado como JSON y lo escribe en la respuesta HTTP
+// con el código de estado indicado. Establece el Content-Type a "application/json".
 func JSON(w http.ResponseWriter, statusCode int, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
 	json.NewEncoder(w).Encode(data)
 }
 
-// Success sends a success response
+// Success envía una respuesta HTTP 200 OK con un mensaje de éxito y datos opcionales.
 func Success(w http.ResponseWriter, message string, data interface{}) {
 	response := models.SuccessResponse{
 		Message: message,
@@ -23,7 +26,7 @@ func Success(w http.ResponseWriter, message string, data interface{}) {
 	JSON(w, http.StatusOK, response)
 }
 
-// Created sends a created response
+// Created envía una respuesta HTTP 201 Created con un mensaje de éxito y datos opcionales.
 func Created(w http.ResponseWriter, message string, data interface{}) {
 	response := models.SuccessResponse{
 		Message: message,
@@ -32,7 +35,8 @@ func Created(w http.ResponseWriter, message string, data interface{}) {
 	JSON(w, http.StatusCreated, response)
 }
 
-// Error sends an error response
+// Error construye y envía una respuesta de error con el código de estado,
+// mensaje para el usuario y texto del error indicados.
 func Error(w http.ResponseWriter, statusCode int, message string, err string) {
 	response := models.ErrorResponse{
 		Error:   err,
@@ -42,27 +46,27 @@ func Error(w http.ResponseWriter, statusCode int, message string, err string) {
 	JSON(w, statusCode, response)
 }
 
-// BadRequest sends a bad request error response
+// BadRequest envía una respuesta HTTP 400 Bad Request con el mensaje proporcionado.
 func BadRequest(w http.ResponseWriter, message string) {
 	Error(w, http.StatusBadRequest, message, "Solicitud inválida")
 }
 
-// Unauthorized sends an unauthorized error response
+// Unauthorized envía una respuesta HTTP 401 Unauthorized con el mensaje proporcionado.
 func Unauthorized(w http.ResponseWriter, message string) {
 	Error(w, http.StatusUnauthorized, message, "No autorizado")
 }
 
-// Forbidden sends a forbidden error response
+// Forbidden envía una respuesta HTTP 403 Forbidden con el mensaje proporcionado.
 func Forbidden(w http.ResponseWriter, message string) {
 	Error(w, http.StatusForbidden, message, "Acceso denegado")
 }
 
-// NotFound sends a not found error response
+// NotFound envía una respuesta HTTP 404 Not Found con el mensaje proporcionado.
 func NotFound(w http.ResponseWriter, message string) {
 	Error(w, http.StatusNotFound, message, "No encontrado")
 }
 
-// InternalServerError sends an internal server error response
+// InternalServerError envía una respuesta HTTP 500 Internal Server Error con el mensaje proporcionado.
 func InternalServerError(w http.ResponseWriter, message string) {
 	Error(w, http.StatusInternalServerError, message, "Error interno del servidor")
 }

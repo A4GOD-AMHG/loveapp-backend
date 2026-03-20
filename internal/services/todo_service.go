@@ -1,3 +1,4 @@
+// Paquete services implementa la lógica de negocio de la aplicación.
 package services
 
 import (
@@ -8,13 +9,14 @@ import (
 	"github.com/A4GOD-AMHG/LoveApp-Backend/internal/repository"
 )
 
-// TodoService handles todo business logic
+// TodoService encapsula la lógica de negocio relacionada con la gestión de tareas.
 type TodoService struct {
-	todoRepo *repository.TodoRepository
-	userRepo *repository.UserRepository
+	todoRepo *repository.TodoRepository // Repositorio de tareas para acceso a datos
+	userRepo *repository.UserRepository // Repositorio de usuarios (para validaciones futuras)
 }
 
-// NewTodoService creates a new todo service
+// NewTodoService crea y retorna una nueva instancia de TodoService
+// con sus repositorios de tareas y usuarios ya inicializados.
 func NewTodoService() *TodoService {
 	return &TodoService{
 		todoRepo: repository.NewTodoRepository(),
@@ -22,43 +24,46 @@ func NewTodoService() *TodoService {
 	}
 }
 
-// allowedCreators defines which users can create todos
+// allowedCreators define qué usuarios del sistema pueden crear tareas.
+// En esta aplicación solo anyel y alexis tienen acceso.
 var allowedCreators = map[string]bool{
 	"anyel":  true,
 	"alexis": true,
 }
 
-// CreateTodo crea una nueva tarea
+// CreateTodo crea una nueva tarea en el sistema para el usuario especificado.
+// Valida que el título no esté vacío antes de persistir.
+// Retorna la respuesta con el mensaje de éxito y los datos de la tarea creada.
 func (s *TodoService) CreateTodo(userID int64, username string, req *models.CreateTodoRequest) (*models.CreateTodoResponse, error) {
-	// Eliminar restricción explícita de usuarios, asumir que el middleware de autenticación maneja el acceso.
-	// O mantener si solo estos usuarios deben crear, pero el usuario dijo que "ambos usuarios pueden crear".
-	
-	// Validate input
+	// Validar que el título de la tarea no esté vacío
 	if req.Title == "" {
 		return nil, fmt.Errorf("el título es requerido")
 	}
-	
-	// Create todo
+
+	// Construir la entidad Todo con los datos del usuario creador
 	todo := &models.Todo{
 		Title:       req.Title,
 		Description: req.Description,
 		CreatorID:   userID,
 	}
-	
+
+	// Persistir la tarea en la base de datos
 	createdTodo, err := s.todoRepo.Create(todo)
 	if err != nil {
 		return nil, fmt.Errorf("error al crear todo")
 	}
-	
+
 	return &models.CreateTodoResponse{
 		Message: "¡Tarea creada con éxito! 🚀",
 		Todo:    *createdTodo,
 	}, nil
 }
 
-// GetTodos lista las tareas con filtros y paginación
+// GetTodos retorna una lista paginada de tareas con soporte para múltiples filtros.
+// Parámetros recibidos como strings (provenientes de query params) y convertidos internamente.
+// Soporta filtros por: estado, creador, búsqueda de texto y ordenamiento.
 func (s *TodoService) GetTodos(statusStr, creatorIDStr, username, sortOrder, search, pageStr, limitStr string) (*models.TodoListResponse, error) {
-	// Parse status
+	// Convertir el string de estado al tipo TodoStatus correspondiente
 	var status models.TodoStatus
 	switch statusStr {
 	case "completed":
@@ -68,10 +73,11 @@ func (s *TodoService) GetTodos(statusStr, creatorIDStr, username, sortOrder, sea
 	case "completed_by_me":
 		status = models.TodoStatusCompletedByMe
 	default:
+		// Si no se especifica o es inválido, retornar todas las tareas
 		status = models.TodoStatusAll
 	}
-	
-	// Parse creator ID
+
+	// Convertir y validar el filtro de ID de creador (opcional)
 	var creatorID *int64
 	if creatorIDStr != "" {
 		id, err := strconv.ParseInt(creatorIDStr, 10, 64)
@@ -81,7 +87,7 @@ func (s *TodoService) GetTodos(statusStr, creatorIDStr, username, sortOrder, sea
 		creatorID = &id
 	}
 
-	// Parse pagination
+	// Parsear y validar los parámetros de paginación con valores predeterminados
 	page, err := strconv.Atoi(pageStr)
 	if err != nil || page < 1 {
 		page = 1
@@ -91,13 +97,14 @@ func (s *TodoService) GetTodos(statusStr, creatorIDStr, username, sortOrder, sea
 		limit = 10
 	}
 	offset := (page - 1) * limit
-	
-	// Get todos
+
+	// Consultar las tareas al repositorio con todos los filtros aplicados
 	todos, total, err := s.todoRepo.GetTodos(status, creatorID, username, sortOrder, search, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("error al obtener todos")
 	}
 
+	// Calcular la última página según el total de resultados
 	lastPage := total / limit
 	if total%limit != 0 {
 		lastPage++
@@ -113,90 +120,89 @@ func (s *TodoService) GetTodos(statusStr, creatorIDStr, username, sortOrder, sea
 	}, nil
 }
 
-// UpdateTodo actualiza una tarea (solo título y descripción, solo por creador)
+// UpdateTodo actualiza el título y la descripción de una tarea existente.
+// Solo el creador de la tarea puede modificarla.
+// Retorna error si la tarea no existe o si el usuario no es el creador.
 func (s *TodoService) UpdateTodo(todoID int64, userID int64, req *models.UpdateTodoRequest) (*models.Todo, error) {
-	// Check if todo exists
+	// Verificar que la tarea existe en la base de datos
 	todo, err := s.todoRepo.FindByID(todoID)
 	if err != nil {
 		return nil, fmt.Errorf("todo no encontrado")
 	}
-	
-	// Check if user is the creator
+
+	// Verificar que el usuario solicitante es el creador de la tarea
 	if todo.CreatorID != userID {
 		return nil, fmt.Errorf("solo el creador puede editar este todo")
 	}
-	
+
+	// Aplicar los cambios al modelo antes de persistir
 	todo.Title = req.Title
 	todo.Description = req.Description
-	
+
 	return s.todoRepo.Update(todo)
 }
 
-// UpdateTodoStatus actualiza el estado de la tarea para un usuario específico
+// UpdateTodoStatus actualiza el estado de completado de una tarea para un usuario específico.
+// Solo "anyel" y "alexis" pueden marcar tareas.
+// Una vez que ambos han completado la tarea (IsCompleted = true), no se puede desmarcar.
 func (s *TodoService) UpdateTodoStatus(todoID int64, username string, completed bool) (*models.CompleteTodoResponse, error) {
-	// Validate username (hardcoded check as per previous logic, ensuring only valid users)
+	// Validar que el usuario sea uno de los dos usuarios permitidos del sistema
 	if username != "anyel" && username != "alexis" {
 		return nil, fmt.Errorf("usuario no autorizado para marcar todos")
 	}
-	
-	// Check if todo exists
+
+	// Verificar que la tarea existe
 	todo, err := s.todoRepo.FindByID(todoID)
 	if err != nil {
 		return nil, fmt.Errorf("todo no encontrado")
 	}
 
-	// Logic: If IsCompleted is already true (both completed), prevent unchecking.
-	// "ese iscompleted una vez marcado no se puede desmarcar"
+	// Regla de negocio: una vez completada por ambos, la tarea no puede desmarcarse
 	if todo.IsCompleted {
-		// If both have completed it, we shouldn't allow changing the state back to false
-		// for either user.
-		// However, we need to check if the incoming request is trying to set completed to false.
 		if !completed {
-			// User is trying to uncheck
 			return nil, fmt.Errorf("la tarea ya está completada por ambos y no se puede desmarcar")
 		}
-		// If user sets completed to true again, it's fine, it stays true.
+		// Si intenta marcarla como completada nuevamente cuando ya lo está, no hay error
 	}
-	
-	// Update completion status in DB
+
+	// Actualizar el estado de completado en la base de datos para este usuario
 	updatedTodo, err := s.todoRepo.UpdateCompletion(todoID, username, completed)
 	if err != nil {
 		return nil, fmt.Errorf("error al actualizar estado del todo")
 	}
 
-	// Logic: Task is completed globally only if both have marked it (handled in model/repo usually or here)
-	// The repo returns the updated todo with IsCompleted calculated.
-	// If the user wants a message "Todo completed" only when fully completed, we can check updatedTodo.IsCompleted.
-	
+	// Personalizar el mensaje según si ambos completaron la tarea o solo uno
 	message := "Estado actualizado correctamente"
 	if updatedTodo.IsCompleted {
 		message = "¡Bien hecho! Tarea completada por ambos. 🎉"
 	}
-	
+
 	return &models.CompleteTodoResponse{
 		Message: message,
 		Todo:    *updatedTodo,
 	}, nil
 }
 
-// DeleteTodo elimina una tarea (solo por el creador)
+// DeleteTodo elimina permanentemente una tarea del sistema.
+// Solo el creador de la tarea puede eliminarla.
+// Retorna error si la tarea no existe o si el usuario no es el creador.
 func (s *TodoService) DeleteTodo(todoID int64, userID int64) error {
-	// Check if todo exists and get creator ID
+	// Obtener el ID del creador de la tarea para verificar permisos
 	creatorID, err := s.todoRepo.GetCreatorID(todoID)
 	if err != nil {
 		return fmt.Errorf("todo no encontrado")
 	}
-	
-	// Check if user is the creator
+
+	// Verificar que el usuario solicitante sea el creador
 	if creatorID != userID {
 		return fmt.Errorf("solo el creador puede eliminar este todo")
 	}
-	
-	// Delete todo
+
+	// Eliminar la tarea de la base de datos
 	err = s.todoRepo.Delete(todoID)
 	if err != nil {
 		return fmt.Errorf("error al eliminar todo")
 	}
-	
+
 	return nil
 }
