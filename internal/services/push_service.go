@@ -43,6 +43,9 @@ type firebaseServiceAccount struct {
 func NewPushService() PushService {
 	ctx := context.Background()
 	pushConfig := config.AppConfig.Push
+	appConfig := &firebase.Config{
+		ProjectID: pushConfig.ProjectID,
+	}
 
 	var app *firebase.App
 	var err error
@@ -66,7 +69,7 @@ func NewPushService() PushService {
 			return &pushService{}
 		}
 
-		app, err = firebase.NewApp(ctx, nil, option.WithCredentialsJSON(credentialsJSON))
+		app, err = firebase.NewApp(ctx, appConfig, option.WithCredentialsJSON(credentialsJSON))
 	} else {
 		credentialsFile := pushConfig.CredentialsFile
 		if credentialsFile == "" {
@@ -79,7 +82,7 @@ func NewPushService() PushService {
 			return &pushService{}
 		}
 
-		app, err = firebase.NewApp(ctx, nil, option.WithCredentialsFile(credentialsFile))
+		app, err = firebase.NewApp(ctx, appConfig, option.WithCredentialsFile(credentialsFile))
 	}
 
 	if err != nil {

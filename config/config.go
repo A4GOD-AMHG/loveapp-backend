@@ -58,29 +58,29 @@ func LoadConfig() error {
 	AppConfig = &Config{
 		Database: DatabaseConfig{
 			// Ruta predeterminada al archivo SQLite si DB_PATH no está definido
-			Path: getEnv("DB_PATH", "./data/loveapp.db"),
+			Path: cleanEnvValue(getEnv("DB_PATH", "./data/loveapp.db")),
 		},
 		JWT: JWTConfig{
 			// Secreto JWT: debe cambiarse en producción mediante la variable JWT_SECRET
-			Secret: []byte(getEnv("JWT_SECRET", "your-super-secret-jwt-key-change-this-in-production")),
+			Secret: []byte(cleanEnvValue(getEnv("JWT_SECRET", "your-super-secret-jwt-key-change-this-in-production"))),
 		},
 		Server: ServerConfig{
 			// Puerto del servidor: predeterminado 8080 si SERVER_PORT no está definido
-			Port: getEnv("SERVER_PORT", "8080"),
+			Port: cleanEnvValue(getEnv("SERVER_PORT", "8080")),
 		},
 		Push: PushConfig{
-			CredentialsFile:         getEnv("FIREBASE_CREDENTIALS_FILE", "loveapp-aa-firebase-adminsdk-fbsvc-ce92554680.json"),
-			Type:                    getEnv("FIREBASE_TYPE", ""),
-			ProjectID:               getEnv("FIREBASE_PROJECT_ID", ""),
-			PrivateKeyID:            getEnv("FIREBASE_PRIVATE_KEY_ID", ""),
-			PrivateKey:              strings.ReplaceAll(getEnv("FIREBASE_PRIVATE_KEY", ""), `\n`, "\n"),
-			ClientEmail:             getEnv("FIREBASE_CLIENT_EMAIL", ""),
-			ClientID:                getEnv("FIREBASE_CLIENT_ID", ""),
-			AuthURI:                 getEnv("FIREBASE_AUTH_URI", ""),
-			TokenURI:                getEnv("FIREBASE_TOKEN_URI", ""),
-			AuthProviderX509CertURL: getEnv("FIREBASE_AUTH_PROVIDER_X509_CERT_URL", ""),
-			ClientX509CertURL:       getEnv("FIREBASE_CLIENT_X509_CERT_URL", ""),
-			UniverseDomain:          getEnv("FIREBASE_UNIVERSE_DOMAIN", ""),
+			CredentialsFile:         cleanEnvValue(getEnv("FIREBASE_CREDENTIALS_FILE", "loveapp-aa-firebase-adminsdk-fbsvc-ce92554680.json")),
+			Type:                    cleanEnvValue(getEnv("FIREBASE_TYPE", "")),
+			ProjectID:               cleanEnvValue(getEnv("FIREBASE_PROJECT_ID", "")),
+			PrivateKeyID:            cleanEnvValue(getEnv("FIREBASE_PRIVATE_KEY_ID", "")),
+			PrivateKey:              strings.ReplaceAll(cleanEnvValue(getEnv("FIREBASE_PRIVATE_KEY", "")), `\n`, "\n"),
+			ClientEmail:             cleanEnvValue(getEnv("FIREBASE_CLIENT_EMAIL", "")),
+			ClientID:                cleanEnvValue(getEnv("FIREBASE_CLIENT_ID", "")),
+			AuthURI:                 cleanEnvValue(getEnv("FIREBASE_AUTH_URI", "")),
+			TokenURI:                cleanEnvValue(getEnv("FIREBASE_TOKEN_URI", "")),
+			AuthProviderX509CertURL: cleanEnvValue(getEnv("FIREBASE_AUTH_PROVIDER_X509_CERT_URL", "")),
+			ClientX509CertURL:       cleanEnvValue(getEnv("FIREBASE_CLIENT_X509_CERT_URL", "")),
+			UniverseDomain:          cleanEnvValue(getEnv("FIREBASE_UNIVERSE_DOMAIN", "")),
 		},
 	}
 	return nil
@@ -145,12 +145,20 @@ func loadDotEnv(path string) {
 		}
 
 		if len(value) >= 2 {
-			if (strings.HasPrefix(value, `"`) && strings.HasSuffix(value, `"`)) ||
-				(strings.HasPrefix(value, `'`) && strings.HasSuffix(value, `'`)) {
-				value = value[1 : len(value)-1]
-			}
+			value = cleanEnvValue(value)
 		}
 
 		_ = os.Setenv(key, value)
 	}
+}
+
+func cleanEnvValue(value string) string {
+	value = strings.TrimSpace(value)
+	if len(value) >= 2 {
+		if (strings.HasPrefix(value, `"`) && strings.HasSuffix(value, `"`)) ||
+			(strings.HasPrefix(value, `'`) && strings.HasSuffix(value, `'`)) {
+			value = value[1 : len(value)-1]
+		}
+	}
+	return value
 }
