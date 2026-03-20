@@ -14,6 +14,7 @@ package main
 import (
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/A4GOD-AMHG/LoveApp-Backend/config"
 	"github.com/A4GOD-AMHG/LoveApp-Backend/database"
@@ -47,6 +48,12 @@ func main() {
 	// Sembrar usuarios iniciales (anyel y alexis) si no existen
 	if err := database.Seed(); err != nil {
 		log.Fatalf("Error al sembrar la base de datos: %v", err)
+	}
+
+	// Permite reutilizar el arranque para reiniciar DB sin levantar el servidor HTTP.
+	if os.Getenv("LOVEAPP_RESET_ONLY") == "1" {
+		log.Printf("Base de datos migrada y sembrada; finalizando por LOVEAPP_RESET_ONLY=1")
+		return
 	}
 
 	// Configurar metadatos de Swagger para la documentación interactiva

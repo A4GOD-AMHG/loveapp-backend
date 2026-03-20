@@ -48,7 +48,8 @@ clean: ## Limpiar binarios compilados y la base de datos
 
 reset-db: ## Vaciar la base de datos, correr migraciones y sembrar usuarios iniciales
 	@echo "🗃️ Reiniciando base de datos en $(DB_PATH)..."
-	GOCACHE=/tmp/go-build go run ./cmd/resetdb
+	rm -f $(DB_PATH)
+	LOVEAPP_RESET_ONLY=1 GOCACHE=/tmp/go-build go run .
 	@echo "✅ Base de datos reiniciada."
 
 test: ## Ejecutar todos los tests unitarios con salida detallada
