@@ -3,7 +3,9 @@
 package config
 
 import (
+	"bufio"
 	"os"
+	"strings"
 )
 
 // Config agrupa todas las configuraciones de la aplicación.
@@ -31,7 +33,18 @@ type ServerConfig struct {
 
 // PushConfig contiene la configuración del proveedor de notificaciones push.
 type PushConfig struct {
-	CredentialsFile string // Ruta al JSON de la service account de Firebase
+	CredentialsFile         string // Ruta opcional al JSON de la service account de Firebase
+	Type                    string // Tipo de credencial de Firebase
+	ProjectID               string // Project ID de Firebase
+	PrivateKeyID            string // ID de la llave privada
+	PrivateKey              string // Llave privada PEM
+	ClientEmail             string // Email de la service account
+	ClientID                string // ID del cliente OAuth
+	AuthURI                 string // URI de autenticación
+	TokenURI                string // URI para obtener access tokens
+	AuthProviderX509CertURL string // URL del cert provider
+	ClientX509CertURL       string // URL del cert del cliente
+	UniverseDomain          string // Dominio de Google APIs
 }
 
 // AppConfig es la instancia global de configuración, accesible desde todo el proyecto.
@@ -40,6 +53,8 @@ var AppConfig *Config
 // LoadConfig carga la configuración desde las variables de entorno.
 // Si una variable no está definida, se usa el valor predeterminado indicado.
 func LoadConfig() error {
+	loadDotEnv(".env")
+
 	AppConfig = &Config{
 		Database: DatabaseConfig{
 			// Ruta predeterminada al archivo SQLite si DB_PATH no está definido
@@ -54,7 +69,18 @@ func LoadConfig() error {
 			Port: getEnv("SERVER_PORT", "8080"),
 		},
 		Push: PushConfig{
-			CredentialsFile: getEnv("FIREBASE_CREDENTIALS_FILE", "loveapp-aa-firebase-adminsdk-fbsvc-ce92554680.json"),
+			CredentialsFile:         getEnv("FIREBASE_CREDENTIALS_FILE", "loveapp-aa-firebase-adminsdk-fbsvc-ce92554680.json"),
+			Type:                    getEnv("FIREBASE_TYPE", ""),
+			ProjectID:               getEnv("FIREBASE_PROJECT_ID", ""),
+			PrivateKeyID:            getEnv("FIREBASE_PRIVATE_KEY_ID", ""),
+			PrivateKey:              strings.ReplaceAll(getEnv("FIREBASE_PRIVATE_KEY", ""), `\n`, "\n"),
+			ClientEmail:             getEnv("FIREBASE_CLIENT_EMAIL", ""),
+			ClientID:                getEnv("FIREBASE_CLIENT_ID", ""),
+			AuthURI:                 getEnv("FIREBASE_AUTH_URI", ""),
+			TokenURI:                getEnv("FIREBASE_TOKEN_URI", ""),
+			AuthProviderX509CertURL: getEnv("FIREBASE_AUTH_PROVIDER_X509_CERT_URL", ""),
+			ClientX509CertURL:       getEnv("FIREBASE_CLIENT_X509_CERT_URL", ""),
+			UniverseDomain:          getEnv("FIREBASE_UNIVERSE_DOMAIN", ""),
 		},
 	}
 	return nil
@@ -85,4 +111,46 @@ func getEnv(key, fallback string) string {
 		return value
 	}
 	return fallback
+}
+
+// loadDotEnv carga variables simples KEY=VALUE desde un archivo .env si existe.
+// No sobreescribe variables ya presentes en el entorno del proceso.
+func loadDotEnv(path string) {
+	file, err := os.Open(path)
+	if err != nil {
+		return
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		key, value, found := strings.Cut(line, "=")
+		if !found {
+			continue
+		}
+
+		key = strings.TrimSpace(key)
+		value = strings.TrimSpace(value)
+		if key == "" {
+			continue
+		}
+
+		if _, exists := os.LookupEnv(key); exists {
+			continue
+		}
+
+		if len(value) >= 2 {
+			if (strings.HasPrefix(value, `"`) && strings.HasSuffix(value, `"`)) ||
+				(strings.HasPrefix(value, `'`) && strings.HasSuffix(value, `'`)) {
+				value = value[1 : len(value)-1]
+			}
+		}
+
+		_ = os.Setenv(key, value)
+	}
 }

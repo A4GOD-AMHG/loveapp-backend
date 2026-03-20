@@ -64,6 +64,7 @@ Sigue estos pasos para levantar el backend en tu entorno local.
 -   `make swagger`: Regenera la documentación de Swagger manualmente.
 -   `make setup`: Instala todas las dependencias del proyecto.
 -   `make clean`: Elimina los binarios compilados y la base de datos local.
+-   `make reset-db`: Borra la base de datos, ejecuta migraciones y vuelve a crear `anyel` y `alexis` con contraseña `password`.
 
 ## Frontend
 

@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -24,21 +25,63 @@ type pushService struct {
 	client *messaging.Client
 }
 
+type firebaseServiceAccount struct {
+	Type                    string `json:"type"`
+	ProjectID               string `json:"project_id"`
+	PrivateKeyID            string `json:"private_key_id"`
+	PrivateKey              string `json:"private_key"`
+	ClientEmail             string `json:"client_email"`
+	ClientID                string `json:"client_id"`
+	AuthURI                 string `json:"auth_uri"`
+	TokenURI                string `json:"token_uri"`
+	AuthProviderX509CertURL string `json:"auth_provider_x509_cert_url"`
+	ClientX509CertURL       string `json:"client_x509_cert_url"`
+	UniverseDomain          string `json:"universe_domain,omitempty"`
+}
+
 // NewPushService crea un servicio de push usando Firebase Admin SDK.
 func NewPushService() PushService {
-	credentialsFile := config.AppConfig.Push.CredentialsFile
-	if credentialsFile == "" {
-		log.Printf("push notifications omitidas: FIREBASE_CREDENTIALS_FILE no configurado")
-		return &pushService{}
-	}
-
-	if _, err := os.Stat(credentialsFile); err != nil {
-		log.Printf("push notifications omitidas: no se encontró el archivo de credenciales %q: %v", credentialsFile, err)
-		return &pushService{}
-	}
-
 	ctx := context.Background()
-	app, err := firebase.NewApp(ctx, nil, option.WithCredentialsFile(credentialsFile))
+	pushConfig := config.AppConfig.Push
+
+	var app *firebase.App
+	var err error
+
+	if hasFirebaseEnvCredentials(pushConfig) {
+		credentialsJSON, marshalErr := json.Marshal(firebaseServiceAccount{
+			Type:                    pushConfig.Type,
+			ProjectID:               pushConfig.ProjectID,
+			PrivateKeyID:            pushConfig.PrivateKeyID,
+			PrivateKey:              pushConfig.PrivateKey,
+			ClientEmail:             pushConfig.ClientEmail,
+			ClientID:                pushConfig.ClientID,
+			AuthURI:                 pushConfig.AuthURI,
+			TokenURI:                pushConfig.TokenURI,
+			AuthProviderX509CertURL: pushConfig.AuthProviderX509CertURL,
+			ClientX509CertURL:       pushConfig.ClientX509CertURL,
+			UniverseDomain:          pushConfig.UniverseDomain,
+		})
+		if marshalErr != nil {
+			log.Printf("push notifications omitidas: error serializando credenciales Firebase: %v", marshalErr)
+			return &pushService{}
+		}
+
+		app, err = firebase.NewApp(ctx, nil, option.WithCredentialsJSON(credentialsJSON))
+	} else {
+		credentialsFile := pushConfig.CredentialsFile
+		if credentialsFile == "" {
+			log.Printf("push notifications omitidas: credenciales Firebase no configuradas")
+			return &pushService{}
+		}
+
+		if _, statErr := os.Stat(credentialsFile); statErr != nil {
+			log.Printf("push notifications omitidas: no se encontró el archivo de credenciales %q: %v", credentialsFile, statErr)
+			return &pushService{}
+		}
+
+		app, err = firebase.NewApp(ctx, nil, option.WithCredentialsFile(credentialsFile))
+	}
+
 	if err != nil {
 		log.Printf("push notifications omitidas: error inicializando Firebase: %v", err)
 		return &pushService{}
@@ -51,6 +94,19 @@ func NewPushService() PushService {
 	}
 
 	return &pushService{client: client}
+}
+
+func hasFirebaseEnvCredentials(cfg config.PushConfig) bool {
+	return cfg.Type != "" &&
+		cfg.ProjectID != "" &&
+		cfg.PrivateKeyID != "" &&
+		cfg.PrivateKey != "" &&
+		cfg.ClientEmail != "" &&
+		cfg.ClientID != "" &&
+		cfg.AuthURI != "" &&
+		cfg.TokenURI != "" &&
+		cfg.AuthProviderX509CertURL != "" &&
+		cfg.ClientX509CertURL != ""
 }
 
 func (s *pushService) SendNewMessage(tokens []models.DevicePushToken, payload models.PushMessagePayload) error {

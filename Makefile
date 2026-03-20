@@ -1,4 +1,4 @@
-.PHONY: help run build swagger deps clean setup env
+.PHONY: help run build swagger deps clean setup env reset-db
 
 ifneq (,$(wildcard ./.env))
     include .env
@@ -11,7 +11,7 @@ help: ## Muestra esta ayuda
 	@echo 'Uso: make <comando>'
 	@echo ''
 	@echo 'Comandos:'
-	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  \033[36m%%-15s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
 run: ## Ejecutar la aplicación en modo desarrollo
 	@echo "🚀 Iniciando la aplicación en http://localhost:$(SERVER_PORT)..."
@@ -45,6 +45,11 @@ clean: ## Limpiar binarios compilados y la base de datos
 	rm -f $(BINARY)
 	rm -f $(DB_PATH)
 	@echo "✅ Limpieza finalizada."
+
+reset-db: ## Vaciar la base de datos, correr migraciones y sembrar usuarios iniciales
+	@echo "🗃️ Reiniciando base de datos en $(DB_PATH)..."
+	GOCACHE=/tmp/go-build go run ./cmd/resetdb
+	@echo "✅ Base de datos reiniciada."
 
 test: ## Ejecutar todos los tests unitarios con salida detallada
 	@echo "🧪 Ejecutando tests unitarios..."
