@@ -1,7 +1,7 @@
 // @title API Backend de LoveApp
 // @version 1.0
 // @description Esta es una API de gestión de tareas para parejas. Permite a dos usuarios (anyel y alexis) crear, gestionar y completar tareas juntos.
-// @host localhost:8080
+// @host localhost:4418
 // @BasePath /
 // @securityDefinitions.apikey BearerAuth
 // @in header
@@ -60,7 +60,7 @@ func main() {
 	docs.SwaggerInfo.Title = "API de LoveApp"
 	docs.SwaggerInfo.Description = "Esta es la API para la aplicación LoveApp."
 	// docs.SwaggerInfo.Version = "1.0"
-	// docs.SwaggerInfo.Host = "localhost:8080"
+	// docs.SwaggerInfo.Host = "localhost:4418"
 	// docs.SwaggerInfo.BasePath = "/"
 	// docs.SwaggerInfo.Schemes = []string{"http"}
 

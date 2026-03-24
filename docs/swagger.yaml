@@ -18,7 +18,7 @@ definitions:
         example: newpassword
         type: string
     required:
-    - new_password
+      - new_password
     type: object
   models.ChangePasswordResponse:
     description: Respuesta de cambio de contraseña
@@ -35,7 +35,7 @@ definitions:
         example: "¡Bien hecho! Tarea marcada como completada. \U0001F389"
         type: string
       todo:
-        $ref: '#/definitions/models.Todo'
+        $ref: "#/definitions/models.Todo"
     type: object
   models.CreateTodoRequest:
     description: Solicitud de creación de tarea
@@ -47,7 +47,7 @@ definitions:
         example: Comprar comida
         type: string
     required:
-    - title
+      - title
     type: object
   models.CreateTodoResponse:
     description: Respuesta de creación de tarea
@@ -56,7 +56,7 @@ definitions:
         example: "¡Tarea creada con éxito! \U0001F680"
         type: string
       todo:
-        $ref: '#/definitions/models.Todo'
+        $ref: "#/definitions/models.Todo"
     type: object
   models.ErrorResponse:
     description: Respuesta de error
@@ -86,8 +86,8 @@ definitions:
         example: anyel
         type: string
     required:
-    - password
-    - username
+      - password
+      - username
     type: object
   models.LoginResponse:
     description: Respuesta de inicio de sesión con token e información de usuario
@@ -102,7 +102,7 @@ definitions:
         type: string
       user:
         allOf:
-        - $ref: '#/definitions/models.User'
+          - $ref: "#/definitions/models.User"
         description: Información de usuario
     type: object
   models.Message:
@@ -114,11 +114,11 @@ definitions:
       id:
         type: integer
       receiver:
-        $ref: '#/definitions/models.UserSummary'
+        $ref: "#/definitions/models.UserSummary"
       receiver_id:
         type: integer
       sender:
-        $ref: '#/definitions/models.UserSummary'
+        $ref: "#/definitions/models.UserSummary"
       sender_id:
         type: integer
       status:
@@ -187,7 +187,7 @@ definitions:
         type: integer
       todos:
         items:
-          $ref: '#/definitions/models.Todo'
+          $ref: "#/definitions/models.Todo"
         type: array
       total:
         example: 5
@@ -203,7 +203,7 @@ definitions:
         example: Comprar comida
         type: string
     required:
-    - title
+      - title
     type: object
   models.UpdateTodoStatusRequest:
     description: Solicitud de actualización de estado de tarea
@@ -244,10 +244,11 @@ definitions:
         example: anyel
         type: string
     type: object
-host: localhost:8080
+host: localhost:4418
 info:
   contact: {}
-  description: Esta es una API de gestión de tareas para parejas. Permite a dos usuarios
+  description:
+    Esta es una API de gestión de tareas para parejas. Permite a dos usuarios
     (anyel y alexis) crear, gestionar y completar tareas juntos.
   title: API Backend de LoveApp
   version: "1.0"
@@ -255,82 +256,82 @@ paths:
   /auth/change-password:
     post:
       consumes:
-      - application/json
+        - application/json
       description: Cambiar la contraseña del usuario autenticado
       parameters:
-      - description: Solicitud de cambio de contraseña
-        in: body
-        name: password
-        required: true
-        schema:
-          $ref: '#/definitions/models.ChangePasswordRequest'
+        - description: Solicitud de cambio de contraseña
+          in: body
+          name: password
+          required: true
+          schema:
+            $ref: "#/definitions/models.ChangePasswordRequest"
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: Contraseña cambiada exitosamente
           schema:
-            $ref: '#/definitions/models.ChangePasswordResponse'
+            $ref: "#/definitions/models.ChangePasswordResponse"
         "400":
           description: Solicitud incorrecta
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: "#/definitions/models.ErrorResponse"
         "401":
           description: No autorizado
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: "#/definitions/models.ErrorResponse"
         "403":
           description: Prohibido
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: "#/definitions/models.ErrorResponse"
         "500":
           description: Error interno del servidor
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: "#/definitions/models.ErrorResponse"
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: Cambiar contraseña de usuario
       tags:
-      - Autenticación
+        - Autenticación
   /auth/login:
     post:
       consumes:
-      - application/json
+        - application/json
       description: Autenticar usuario con nombre de usuario y contraseña
       parameters:
-      - description: Credenciales de inicio de sesión
-        in: body
-        name: credentials
-        required: true
-        schema:
-          $ref: '#/definitions/models.LoginRequest'
+        - description: Credenciales de inicio de sesión
+          in: body
+          name: credentials
+          required: true
+          schema:
+            $ref: "#/definitions/models.LoginRequest"
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: Inicio de sesión exitoso
           schema:
-            $ref: '#/definitions/models.LoginResponse'
+            $ref: "#/definitions/models.LoginResponse"
         "400":
           description: Solicitud incorrecta
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: "#/definitions/models.ErrorResponse"
         "401":
           description: Credenciales inválidas
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: "#/definitions/models.ErrorResponse"
         "500":
           description: Error interno del servidor
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: "#/definitions/models.ErrorResponse"
       summary: Inicio de sesión de usuario
       tags:
-      - Autenticación
+        - Autenticación
   /auth/logout:
     post:
       description: Cerrar la sesión del usuario actual
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: Cierre de sesión exitoso
@@ -339,141 +340,142 @@ paths:
               type: string
             type: object
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: Cerrar sesión
       tags:
-      - Autenticación
+        - Autenticación
   /messages:
     post:
       consumes:
-      - application/json
+        - application/json
       description: Envía un mensaje del usuario autenticado al otro usuario del sistema.
       parameters:
-      - description: Carga útil del mensaje
-        in: body
-        name: message
-        required: true
-        schema:
-          $ref: '#/definitions/controllers.sendMessageRequest'
+        - description: Carga útil del mensaje
+          in: body
+          name: message
+          required: true
+          schema:
+            $ref: "#/definitions/controllers.sendMessageRequest"
       produces:
-      - application/json
+        - application/json
       responses:
         "201":
           description: Mensaje enviado exitosamente
           schema:
-            $ref: '#/definitions/models.Message'
+            $ref: "#/definitions/models.Message"
         "400":
           description: Solicitud incorrecta
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: "#/definitions/models.ErrorResponse"
         "401":
           description: No autorizado
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: "#/definitions/models.ErrorResponse"
         "500":
           description: Error interno del servidor
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: "#/definitions/models.ErrorResponse"
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: Enviar un mensaje
       tags:
-      - Mensajes
+        - Mensajes
   /messages/{id}:
     delete:
       description: Elimina un mensaje para el remitente y el destinatario.
       parameters:
-      - description: ID del mensaje
-        in: path
-        name: id
-        required: true
-        type: integer
+        - description: ID del mensaje
+          in: path
+          name: id
+          required: true
+          type: integer
       produces:
-      - application/json
+        - application/json
       responses:
         "204":
           description: Sin Contenido
         "401":
           description: No autorizado
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: "#/definitions/models.ErrorResponse"
         "403":
           description: Prohibido
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: "#/definitions/models.ErrorResponse"
         "404":
           description: No encontrado
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: "#/definitions/models.ErrorResponse"
         "500":
           description: Error interno del servidor
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: "#/definitions/models.ErrorResponse"
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: Eliminar un mensaje
       tags:
-      - Mensajes
+        - Mensajes
     put:
       consumes:
-      - application/json
-      description: Edita un mensaje enviado por el usuario autenticado, si es dentro
+        - application/json
+      description:
+        Edita un mensaje enviado por el usuario autenticado, si es dentro
         de 1 hora de enviado.
       parameters:
-      - description: ID del mensaje
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: Nuevo contenido del mensaje
-        in: body
-        name: message
-        required: true
-        schema:
-          $ref: '#/definitions/controllers.editMessageRequest'
+        - description: ID del mensaje
+          in: path
+          name: id
+          required: true
+          type: integer
+        - description: Nuevo contenido del mensaje
+          in: body
+          name: message
+          required: true
+          schema:
+            $ref: "#/definitions/controllers.editMessageRequest"
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: Mensaje actualizado exitosamente
           schema:
-            $ref: '#/definitions/models.Message'
+            $ref: "#/definitions/models.Message"
         "400":
           description: Solicitud incorrecta
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: "#/definitions/models.ErrorResponse"
         "401":
           description: No autorizado
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: "#/definitions/models.ErrorResponse"
         "403":
           description: Prohibido
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: "#/definitions/models.ErrorResponse"
         "404":
           description: No encontrado
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: "#/definitions/models.ErrorResponse"
         "500":
           description: Error interno del servidor
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: "#/definitions/models.ErrorResponse"
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: Editar un mensaje
       tags:
-      - Mensajes
+        - Mensajes
   /messages/{id}/delivered:
     patch:
       description: Marca un mensaje como entregado al destinatario.
       parameters:
-      - description: ID del mensaje
-        in: path
-        name: id
-        required: true
-        type: integer
+        - description: ID del mensaje
+          in: path
+          name: id
+          required: true
+          type: integer
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: Mensaje marcado como entregado
@@ -484,35 +486,35 @@ paths:
         "401":
           description: No autorizado
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: "#/definitions/models.ErrorResponse"
         "403":
           description: Prohibido
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: "#/definitions/models.ErrorResponse"
         "404":
           description: No encontrado
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: "#/definitions/models.ErrorResponse"
         "500":
           description: Error interno del servidor
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: "#/definitions/models.ErrorResponse"
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: Marcar mensaje como entregado
       tags:
-      - Mensajes
+        - Mensajes
   /messages/{id}/read:
     patch:
       description: Marca un mensaje como leído por el destinatario.
       parameters:
-      - description: ID del mensaje
-        in: path
-        name: id
-        required: true
-        type: integer
+        - description: ID del mensaje
+          in: path
+          name: id
+          required: true
+          type: integer
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: Mensaje marcado como leído
@@ -523,305 +525,310 @@ paths:
         "401":
           description: No autorizado
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: "#/definitions/models.ErrorResponse"
         "403":
           description: Prohibido
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: "#/definitions/models.ErrorResponse"
         "404":
           description: No encontrado
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: "#/definitions/models.ErrorResponse"
         "500":
           description: Error interno del servidor
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: "#/definitions/models.ErrorResponse"
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: Marcar mensaje como leído
       tags:
-      - Mensajes
+        - Mensajes
   /messages/conversation:
     get:
-      description: Recupera el historial de mensajes entre el usuario autenticado
+      description:
+        Recupera el historial de mensajes entre el usuario autenticado
         y el otro usuario del sistema, con paginación.
       parameters:
-      - description: Número de página (por defecto 1)
-        in: query
-        name: page
-        type: integer
-      - description: Mensajes por página (por defecto 10)
-        in: query
-        name: per_page
-        type: integer
+        - description: Número de página (por defecto 1)
+          in: query
+          name: page
+          type: integer
+        - description: Mensajes por página (por defecto 10)
+          in: query
+          name: per_page
+          type: integer
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: Historial de conversación
           schema:
             items:
-              $ref: '#/definitions/models.Message'
+              $ref: "#/definitions/models.Message"
             type: array
         "401":
           description: No autorizado
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: "#/definitions/models.ErrorResponse"
         "500":
           description: Error interno del servidor
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: "#/definitions/models.ErrorResponse"
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: Obtener conversación
       tags:
-      - Mensajes
+        - Mensajes
   /todos:
     get:
-      description: Obtener una lista de tareas con filtros opcionales por estado,
+      description:
+        Obtener una lista de tareas con filtros opcionales por estado,
         creador y ordenamiento por fecha de creación.
       parameters:
-      - description: Filtrar por ID de usuario creador.
-        in: query
-        name: creator_id
-        type: integer
-      - default: all
-        description: Filtrar por estado.
-        enum:
-        - all
-        - completed
-        - incompleted
-        - completed_by_me
-        in: query
-        name: status
-        type: string
-      - description: Buscar por título o descripción.
-        in: query
-        name: search
-        type: string
-      - default: desc
-        description: Orden por fecha de creación.
-        enum:
-        - asc
-        - desc
-        in: query
-        name: sort_order
-        type: string
-      - default: 1
-        description: Número de página
-        in: query
-        name: page
-        type: integer
-      - default: 10
-        description: Elementos por página
-        in: query
-        name: limit
-        type: integer
+        - description: Filtrar por ID de usuario creador.
+          in: query
+          name: creator_id
+          type: integer
+        - default: all
+          description: Filtrar por estado.
+          enum:
+            - all
+            - completed
+            - incompleted
+            - completed_by_me
+          in: query
+          name: status
+          type: string
+        - description: Buscar por título o descripción.
+          in: query
+          name: search
+          type: string
+        - default: desc
+          description: Orden por fecha de creación.
+          enum:
+            - asc
+            - desc
+          in: query
+          name: sort_order
+          type: string
+        - default: 1
+          description: Número de página
+          in: query
+          name: page
+          type: integer
+        - default: 10
+          description: Elementos por página
+          in: query
+          name: limit
+          type: integer
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: Tareas recuperadas exitosamente
           schema:
-            $ref: '#/definitions/models.TodoListResponse'
+            $ref: "#/definitions/models.TodoListResponse"
         "400":
           description: Solicitud incorrecta
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: "#/definitions/models.ErrorResponse"
         "401":
           description: No autorizado
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: "#/definitions/models.ErrorResponse"
         "500":
           description: Error interno del servidor
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: "#/definitions/models.ErrorResponse"
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: Listar tareas
       tags:
-      - Tareas
+        - Tareas
     post:
       consumes:
-      - application/json
-      description: 'Crear una nueva tarea (solo para usuarios autorizados: anyel,
-        alexis)'
+        - application/json
+      description:
+        "Crear una nueva tarea (solo para usuarios autorizados: anyel,
+        alexis)"
       parameters:
-      - description: Solicitud de creación de tarea
-        in: body
-        name: todo
-        required: true
-        schema:
-          $ref: '#/definitions/models.CreateTodoRequest'
+        - description: Solicitud de creación de tarea
+          in: body
+          name: todo
+          required: true
+          schema:
+            $ref: "#/definitions/models.CreateTodoRequest"
       produces:
-      - application/json
+        - application/json
       responses:
         "201":
           description: Tarea creada exitosamente
           schema:
-            $ref: '#/definitions/models.CreateTodoResponse'
+            $ref: "#/definitions/models.CreateTodoResponse"
         "400":
           description: Solicitud incorrecta
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: "#/definitions/models.ErrorResponse"
         "401":
           description: No autorizado
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: "#/definitions/models.ErrorResponse"
         "403":
           description: Prohibido
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: "#/definitions/models.ErrorResponse"
         "500":
           description: Error interno del servidor
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: "#/definitions/models.ErrorResponse"
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: Crear una nueva tarea
       tags:
-      - Tareas
+        - Tareas
   /todos/{id}:
     delete:
       description: Eliminar una tarea (solo el creador puede eliminar sus tareas)
       parameters:
-      - description: ID de la tarea
-        in: path
-        name: id
-        required: true
-        type: integer
+        - description: ID de la tarea
+          in: path
+          name: id
+          required: true
+          type: integer
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: Tarea eliminada exitosamente
           schema:
-            $ref: '#/definitions/models.SuccessResponse'
+            $ref: "#/definitions/models.SuccessResponse"
         "400":
           description: Solicitud incorrecta
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: "#/definitions/models.ErrorResponse"
         "401":
           description: No autorizado
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: "#/definitions/models.ErrorResponse"
         "403":
           description: Prohibido
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: "#/definitions/models.ErrorResponse"
         "404":
           description: Tarea no encontrada
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: "#/definitions/models.ErrorResponse"
         "500":
           description: Error interno del servidor
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: "#/definitions/models.ErrorResponse"
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: Eliminar una tarea
       tags:
-      - Tareas
+        - Tareas
     patch:
       consumes:
-      - application/json
+        - application/json
       description: Actualizar el estado de la tarea (completado) para el usuario autenticado
       parameters:
-      - description: ID de la tarea
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: Solicitud de actualización de estado de tarea
-        in: body
-        name: status
-        required: true
-        schema:
-          $ref: '#/definitions/models.UpdateTodoStatusRequest'
+        - description: ID de la tarea
+          in: path
+          name: id
+          required: true
+          type: integer
+        - description: Solicitud de actualización de estado de tarea
+          in: body
+          name: status
+          required: true
+          schema:
+            $ref: "#/definitions/models.UpdateTodoStatusRequest"
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: Estado de la tarea actualizado
           schema:
-            $ref: '#/definitions/models.CompleteTodoResponse'
+            $ref: "#/definitions/models.CompleteTodoResponse"
         "400":
           description: Solicitud incorrecta
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: "#/definitions/models.ErrorResponse"
         "401":
           description: No autorizado
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: "#/definitions/models.ErrorResponse"
         "403":
           description: Prohibido
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: "#/definitions/models.ErrorResponse"
         "404":
           description: Tarea no encontrada
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: "#/definitions/models.ErrorResponse"
         "500":
           description: Error interno del servidor
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: "#/definitions/models.ErrorResponse"
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: Actualizar estado de la tarea
       tags:
-      - Tareas
+        - Tareas
     put:
       consumes:
-      - application/json
-      description: Actualizar título y descripción de la tarea (solo el creador puede
+        - application/json
+      description:
+        Actualizar título y descripción de la tarea (solo el creador puede
         actualizar sus tareas)
       parameters:
-      - description: ID de la tarea
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: Solicitud de actualización de tarea
-        in: body
-        name: todo
-        required: true
-        schema:
-          $ref: '#/definitions/models.UpdateTodoRequest'
+        - description: ID de la tarea
+          in: path
+          name: id
+          required: true
+          type: integer
+        - description: Solicitud de actualización de tarea
+          in: body
+          name: todo
+          required: true
+          schema:
+            $ref: "#/definitions/models.UpdateTodoRequest"
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: Tarea actualizada exitosamente
           schema:
-            $ref: '#/definitions/models.Todo'
+            $ref: "#/definitions/models.Todo"
         "400":
           description: Solicitud incorrecta
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: "#/definitions/models.ErrorResponse"
         "401":
           description: No autorizado
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: "#/definitions/models.ErrorResponse"
         "403":
           description: Prohibido
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: "#/definitions/models.ErrorResponse"
         "404":
           description: Tarea no encontrada
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: "#/definitions/models.ErrorResponse"
         "500":
           description: Error interno del servidor
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: "#/definitions/models.ErrorResponse"
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: Actualizar detalles de la tarea
       tags:
-      - Tareas
+        - Tareas
   /ws:
     get:
-      description: Actualiza la conexión HTTP a una conexión WebSocket para comunicación
+      description:
+        Actualiza la conexión HTTP a una conexión WebSocket para comunicación
         en tiempo real.
       responses:
         "101":
@@ -829,12 +836,12 @@ paths:
         "401":
           description: No autorizado
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: "#/definitions/models.ErrorResponse"
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: Conexión WebSocket
       tags:
-      - Mensajes
+        - Mensajes
 securityDefinitions:
   BearerAuth:
     description: Escriba "Bearer" seguido de un espacio y el token JWT.

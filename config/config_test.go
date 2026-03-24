@@ -21,8 +21,8 @@ func TestLoadConfig_ValoresPredeterminados(t *testing.T) {
 	if AppConfig.Database.Path != "./data/loveapp.db" {
 		t.Errorf("DB path esperado './data/loveapp.db', se obtuvo '%s'", AppConfig.Database.Path)
 	}
-	if AppConfig.Server.Port != "8080" {
-		t.Errorf("Puerto esperado '8080', se obtuvo '%s'", AppConfig.Server.Port)
+	if AppConfig.Server.Port != "4418" {
+		t.Errorf("Puerto esperado '4418', se obtuvo '%s'", AppConfig.Server.Port)
 	}
 	if len(AppConfig.JWT.Secret) == 0 {
 		t.Error("JWT Secret no debe estar vacío")
@@ -58,25 +58,25 @@ func TestLoadConfig_DesdeVariablesDeEntorno(t *testing.T) {
 
 // TestGetServerPort_SinPrefijo verifica que se añada ":" al puerto si no lo tiene.
 func TestGetServerPort_SinPrefijo(t *testing.T) {
-	cfg := &Config{Server: ServerConfig{Port: "8080"}}
-	if puerto := cfg.GetServerPort(); puerto != ":8080" {
-		t.Errorf("esperado ':8080', se obtuvo '%s'", puerto)
+	cfg := &Config{Server: ServerConfig{Port: "4418"}}
+	if puerto := cfg.GetServerPort(); puerto != ":4418" {
+		t.Errorf("esperado ':4418', se obtuvo '%s'", puerto)
 	}
 }
 
 // TestGetServerPort_ConPrefijo verifica que el puerto con ":" se retorne sin modificar.
 func TestGetServerPort_ConPrefijo(t *testing.T) {
-	cfg := &Config{Server: ServerConfig{Port: ":8080"}}
-	if puerto := cfg.GetServerPort(); puerto != ":8080" {
-		t.Errorf("esperado ':8080', se obtuvo '%s'", puerto)
+	cfg := &Config{Server: ServerConfig{Port: ":4418"}}
+	if puerto := cfg.GetServerPort(); puerto != ":4418" {
+		t.Errorf("esperado ':4418', se obtuvo '%s'", puerto)
 	}
 }
 
-// TestGetServerPort_Vacio verifica que un puerto vacío retorne ":8080" por defecto.
+// TestGetServerPort_Vacio verifica que un puerto vacío retorne ":4418" por defecto.
 func TestGetServerPort_Vacio(t *testing.T) {
 	cfg := &Config{Server: ServerConfig{Port: ""}}
-	if puerto := cfg.GetServerPort(); puerto != ":8080" {
-		t.Errorf("esperado ':8080', se obtuvo '%s'", puerto)
+	if puerto := cfg.GetServerPort(); puerto != ":4418" {
+		t.Errorf("esperado ':4418', se obtuvo '%s'", puerto)
 	}
 }
 

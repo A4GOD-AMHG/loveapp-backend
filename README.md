@@ -55,7 +55,7 @@ Sigue estos pasos para levantar el backend en tu entorno local.
     make run
     ```
 
-    El servidor se iniciará en `http://localhost:8080`.
+    El servidor se iniciará en `http://localhost:4418`.
 
 ## Comandos Útiles del Makefile
 

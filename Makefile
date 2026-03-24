@@ -31,7 +31,7 @@ swagger: ## Generar la documentación de Swagger
 
 setup: env deps ## Realizar la configuración inicial del proyecto
 	@mkdir -p ./data
-	@echo "✅ ¡Proyecto configurado! Ahora puedes usar 'make run'."
+	@echo "✅ Proyecto configurado, ahora puedes usar 'make run'"
 
 deps: ## Instalar/actualizar dependencias y herramientas
 	@echo "📦 Instalando dependencias..."

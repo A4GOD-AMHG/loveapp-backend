@@ -28,7 +28,7 @@ type JWTConfig struct {
 
 // ServerConfig contiene la configuración del servidor HTTP.
 type ServerConfig struct {
-	Port string // Puerto en el que escucha el servidor (ej. "8080")
+	Port string // Puerto en el que escucha el servidor (ej. "4418")
 }
 
 // PushConfig contiene la configuración del proveedor de notificaciones push.
@@ -65,8 +65,8 @@ func LoadConfig() error {
 			Secret: []byte(cleanEnvValue(getEnv("JWT_SECRET", "your-super-secret-jwt-key-change-this-in-production"))),
 		},
 		Server: ServerConfig{
-			// Puerto del servidor: predeterminado 8080 si SERVER_PORT no está definido
-			Port: cleanEnvValue(getEnv("SERVER_PORT", "8080")),
+			// Puerto del servidor: predeterminado 4418 si SERVER_PORT no está definido
+			Port: cleanEnvValue(getEnv("SERVER_PORT", "4418")),
 		},
 		Push: PushConfig{
 			CredentialsFile:         cleanEnvValue(getEnv("FIREBASE_CREDENTIALS_FILE", "loveapp-aa-firebase-adminsdk-fbsvc-ce92554680.json")),
@@ -92,11 +92,11 @@ func (c *Config) GetDatabasePath() string {
 }
 
 // GetServerPort retorna el puerto del servidor con el prefijo ":" requerido por net/http.
-// Si el puerto está vacío, retorna ":8080" como valor predeterminado.
+// Si el puerto está vacío, retorna ":4418" como valor predeterminado.
 // Si ya tiene el prefijo ":", lo retorna tal cual.
 func (c *Config) GetServerPort() string {
 	if c.Server.Port == "" {
-		return ":8080"
+		return ":4418"
 	}
 	if c.Server.Port[0] != ':' {
 		return ":" + c.Server.Port
