@@ -10,16 +10,17 @@ import (
 
 // Seed inserta los usuarios iniciales de la aplicación (anyel y alexis) si aún no existen.
 // Si un usuario ya está registrado, se omite sin error.
-// La contraseña inicial de ambos usuarios es "password".
+// Las contraseñas iniciales son: anyel/anyel y alexis/alexis.
 func Seed() error {
 	// Definición de los usuarios iniciales que deben existir en el sistema
 	type userSeed struct {
 		Name     string
 		Username string
+		Password string
 	}
 	users := []userSeed{
-		{Name: "Anyel", Username: "anyel"},
-		{Name: "Alexis", Username: "alexis"},
+		{Name: "Anyel", Username: "anyel", Password: "anyel"},
+		{Name: "Alexis", Username: "alexis", Password: "alexis"},
 	}
 
 	for _, u := range users {
@@ -32,8 +33,8 @@ func Seed() error {
 			continue
 		}
 
-		// Generar hash seguro de la contraseña inicial "password"
-		hash, err := bcrypt.GenerateFromPassword([]byte("password"), bcrypt.DefaultCost)
+		// Generar hash seguro de la contraseña inicial del usuario
+		hash, err := bcrypt.GenerateFromPassword([]byte(u.Password), bcrypt.DefaultCost)
 		if err != nil {
 			return err
 		}
@@ -43,7 +44,7 @@ func Seed() error {
 		if err != nil {
 			return err
 		}
-		log.Printf("Usuario creado: %s (%s) con contraseña: password", u.Username, u.Name)
+		log.Printf("Usuario creado: %s (%s) con contraseña: %s", u.Username, u.Name, u.Password)
 	}
 
 	log.Println("Sembrado de base de datos completado exitosamente")

@@ -1,11 +1,20 @@
-.PHONY: help run build swagger deps clean setup env reset-db
+.PHONY: help run deps build clean resetdb test deploy
 
 ifneq (,$(wildcard ./.env))
-    include .env
-    export
+	include .env
+	export
 endif
 
-BINARY="$(BIN_DIR)/$(APP_NAME)"
+SERVICE_NAME ?= loveapp-backend
+DISPLAY_NAME ?= $(if $(APP_NAME),$(APP_NAME),$(SERVICE_NAME))
+BIN_DIR ?= ./bin
+LOG_DIR ?= ./logs
+RUN_DIR ?= ./run
+DB_PATH ?= ./data/loveapp.db
+SERVER_PORT ?= 4418
+BINARY="$(BIN_DIR)/$(SERVICE_NAME)"
+PID_FILE="$(RUN_DIR)/$(SERVICE_NAME).pid"
+LOG_FILE="$(LOG_DIR)/$(SERVICE_NAME).log"
 
 help: ## Muestra esta ayuda
 	@echo 'Uso: make <comando>'
@@ -16,22 +25,7 @@ help: ## Muestra esta ayuda
 run: ## Ejecutar la aplicación en modo desarrollo
 	@echo "🚀 Iniciando la aplicación en http://localhost:$(SERVER_PORT)..."
 	@mkdir -p ./data
-	go run .
-
-build: swagger ## Compilar el binario para producción
-	@echo "🔨 Compilando binario..."
-	@mkdir -p $(BIN_DIR)
-	go build -ldflags="-s -w" -o $(BINARY) .
-	@echo "✅ Compilación finalizada: $(BINARY)"
-
-swagger: ## Generar la documentación de Swagger
-	@echo "📚 Generando documentación de Swagger..."
-	swag init -g main.go --output ./docs
-	@echo "✅ Documentación de Swagger generada."
-
-setup: env deps ## Realizar la configuración inicial del proyecto
-	@mkdir -p ./data
-	@echo "✅ Proyecto configurado, ahora puedes usar 'make run'"
+	go run . --host=0.0.0.0
 
 deps: ## Instalar/actualizar dependencias y herramientas
 	@echo "📦 Instalando dependencias..."
@@ -40,27 +34,48 @@ deps: ## Instalar/actualizar dependencias y herramientas
 	go install github.com/swaggo/swag/cmd/swag@latest
 	@echo "✅ Dependencias actualizadas."
 
+build: ## Compilar el binario para producción (incluye Swagger)
+	@echo "🔨 Compilando binario..."
+	@echo "📚 Generando documentación Swagger..."
+	swag init -g main.go --output ./docs
+	@mkdir -p $(BIN_DIR)
+	go build -ldflags="-s -w" -o $(BINARY) .
+	@echo "✅ Compilación finalizada: $(BINARY)"
+
 clean: ## Limpiar binarios compilados y la base de datos
 	@echo "🧹 Limpiando..."
 	rm -f $(BINARY)
 	rm -f $(DB_PATH)
+	rm -f $(PID_FILE)
 	@echo "✅ Limpieza finalizada."
 
-reset-db: ## Vaciar la base de datos, correr migraciones y sembrar usuarios iniciales
+resetdb: ## Vaciar la base de datos, correr migraciones y sembrar usuarios iniciales
 	@echo "🗃️ Reiniciando base de datos en $(DB_PATH)..."
+	@mkdir -p ./data
 	rm -f $(DB_PATH)
 	LOVEAPP_RESET_ONLY=1 GOCACHE=/tmp/go-build go run .
 	@echo "✅ Base de datos reiniciada."
 
 test: ## Ejecutar todos los tests unitarios con salida detallada
 	@echo "🧪 Ejecutando tests unitarios..."
-	go test -v -count=1 ./...
+	GOCACHE=$(CURDIR)/.gocache go test -v -count=1 ./...
 	@echo "✅ Tests finalizados."
 
-env: ## Crear .env desde example.env si no existe
-	@if [ ! -f .env ]; then \
-		cp example.env .env; \
-		echo "✅ Archivo .env creado."; \
+deploy: build ## Recompilar y desplegar producción (reemplaza instancia previa si existe)
+	@echo "🚀 Desplegando $(DISPLAY_NAME) en producción..."
+	@mkdir -p $(LOG_DIR) $(RUN_DIR) ./data
+	@if [ -f $(PID_FILE) ] && kill -0 $$(cat $(PID_FILE)) 2>/dev/null; then \
+		echo "🛑 Deteniendo instancia actual: $$(cat $(PID_FILE))"; \
+		kill $$(cat $(PID_FILE)); \
+		sleep 1; \
+	fi
+	@rm -f $(PID_FILE)
+	@nohup $(BINARY) >> $(LOG_FILE) 2>&1 & echo $$! > $(PID_FILE)
+	@sleep 1
+	@if kill -0 $$(cat $(PID_FILE)) 2>/dev/null; then \
+		echo "✅ Producción desplegada. PID: $$(cat $(PID_FILE))"; \
+		echo "📄 Logs: $(LOG_FILE)"; \
 	else \
-		echo "⚠️  El archivo .env ya existe."; \
+		echo "❌ El proceso no inició correctamente. Revisa logs en $(LOG_FILE)"; \
+		exit 1; \
 	fi

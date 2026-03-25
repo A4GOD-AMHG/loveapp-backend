@@ -913,6 +913,7 @@
             "type": "object",
             "properties": {
                 "content": {
+                    "description": "Nuevo contenido del mensaje",
                     "type": "string"
                 }
             }
@@ -921,6 +922,7 @@
             "type": "object",
             "properties": {
                 "content": {
+                    "description": "Contenido del mensaje a enviar",
                     "type": "string"
                 }
             }
@@ -933,7 +935,7 @@
             ],
             "properties": {
                 "new_password": {
-                    "description": "Nueva contraseña",
+                    "description": "Nueva contraseña en texto plano (mínimo 6 caracteres)",
                     "type": "string",
                     "example": "newpassword"
                 }
@@ -944,7 +946,7 @@
             "type": "object",
             "properties": {
                 "message": {
-                    "description": "Mensaje de éxito",
+                    "description": "Mensaje de confirmación del cambio",
                     "type": "string",
                     "example": "¡Contraseña actualizada con éxito! ✨"
                 }
@@ -955,11 +957,17 @@
             "type": "object",
             "properties": {
                 "message": {
+                    "description": "Mensaje de resultado",
                     "type": "string",
                     "example": "¡Bien hecho! Tarea marcada como completada. 🎉"
                 },
                 "todo": {
-                    "$ref": "#/definitions/models.Todo"
+                    "description": "Estado actualizado de la tarea",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.Todo"
+                        }
+                    ]
                 }
             }
         },
@@ -971,10 +979,12 @@
             ],
             "properties": {
                 "description": {
+                    "description": "Descripción opcional de la tarea",
                     "type": "string",
                     "example": "Ir al supermercado y comprar frutas y verduras"
                 },
                 "title": {
+                    "description": "Título de la tarea (obligatorio)",
                     "type": "string",
                     "example": "Comprar comida"
                 }
@@ -985,11 +995,17 @@
             "type": "object",
             "properties": {
                 "message": {
+                    "description": "Mensaje de confirmación",
                     "type": "string",
                     "example": "¡Tarea creada con éxito! 🚀"
                 },
                 "todo": {
-                    "$ref": "#/definitions/models.Todo"
+                    "description": "Datos completos de la tarea recién creada",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.Todo"
+                        }
+                    ]
                 }
             }
         },
@@ -998,17 +1014,17 @@
             "type": "object",
             "properties": {
                 "code": {
-                    "description": "Código de error",
+                    "description": "Código de estado HTTP asociado al error",
                     "type": "integer",
                     "example": 400
                 },
                 "error": {
-                    "description": "Mensaje de error",
+                    "description": "Tipo o categoría del error",
                     "type": "string",
                     "example": "Mensaje de error"
                 },
                 "message": {
-                    "description": "Mensaje de error detallado",
+                    "description": "Descripción detallada del error para el usuario",
                     "type": "string",
                     "example": "Error detallado"
                 }
@@ -1023,12 +1039,12 @@
             ],
             "properties": {
                 "password": {
-                    "description": "Contraseña",
+                    "description": "Contraseña en texto plano (obligatorio)",
                     "type": "string",
-                    "example": "password"
+                    "example": "anyel"
                 },
                 "username": {
-                    "description": "Nombre de usuario",
+                    "description": "Nombre de usuario (obligatorio)",
                     "type": "string",
                     "example": "anyel"
                 }
@@ -1039,17 +1055,22 @@
             "type": "object",
             "properties": {
                 "message": {
-                    "description": "Mensaje de éxito",
+                    "description": "Mensaje de confirmación",
                     "type": "string",
                     "example": "Inicio de sesión exitoso"
                 },
                 "token": {
-                    "description": "Token JWT",
+                    "description": "Token JWT para autenticación de solicitudes",
                     "type": "string",
                     "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
                 },
+                "unread_count": {
+                    "description": "Cantidad de mensajes no leídos para pintar el badge inicial",
+                    "type": "integer",
+                    "example": 3
+                },
                 "user": {
-                    "description": "Información de usuario",
+                    "description": "Datos del usuario autenticado (sin contraseña)",
                     "allOf": [
                         {
                             "$ref": "#/definitions/models.User"
@@ -1062,30 +1083,47 @@
             "type": "object",
             "properties": {
                 "content": {
+                    "description": "Contenido textual del mensaje",
                     "type": "string"
                 },
                 "created_at": {
+                    "description": "Fecha y hora de creación del mensaje",
                     "type": "string"
                 },
                 "id": {
+                    "description": "Identificador único del mensaje",
                     "type": "integer"
                 },
                 "receiver": {
-                    "$ref": "#/definitions/models.UserSummary"
+                    "description": "Información resumida del destinatario",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.UserSummary"
+                        }
+                    ]
                 },
                 "receiver_id": {
+                    "description": "ID del usuario que recibe el mensaje",
                     "type": "integer"
                 },
                 "sender": {
-                    "$ref": "#/definitions/models.UserSummary"
+                    "description": "Información resumida del remitente",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.UserSummary"
+                        }
+                    ]
                 },
                 "sender_id": {
+                    "description": "ID del usuario que envió el mensaje",
                     "type": "integer"
                 },
                 "status": {
+                    "description": "Estado del mensaje: \"sent\", \"delivered\" o \"read\"",
                     "type": "string"
                 },
                 "updated_at": {
+                    "description": "Fecha y hora de la última actualización",
                     "type": "string"
                 }
             }
@@ -1095,10 +1133,10 @@
             "type": "object",
             "properties": {
                 "data": {
-                    "description": "Datos opcionales"
+                    "description": "Datos opcionales retornados junto al mensaje"
                 },
                 "message": {
-                    "description": "Mensaje de éxito",
+                    "description": "Mensaje descriptivo del resultado exitoso",
                     "type": "string",
                     "example": "Operación exitosa"
                 }
@@ -1109,42 +1147,52 @@
             "type": "object",
             "properties": {
                 "completed_alexis": {
+                    "description": "Indica si Alexis marcó la tarea como completada",
                     "type": "boolean",
                     "example": false
                 },
                 "completed_anyel": {
+                    "description": "Indica si Anyel marcó la tarea como completada",
                     "type": "boolean",
                     "example": true
                 },
                 "created_at": {
+                    "description": "Fecha y hora de creación",
                     "type": "string",
                     "example": "2024-01-01T00:00:00Z"
                 },
                 "creator_id": {
+                    "description": "ID del usuario que creó la tarea",
                     "type": "integer",
                     "example": 1
                 },
                 "creator_username": {
+                    "description": "Nombre de usuario del creador",
                     "type": "string",
                     "example": "anyel"
                 },
                 "description": {
+                    "description": "Descripción detallada de la tarea",
                     "type": "string",
                     "example": "Ir al supermercado y comprar..."
                 },
                 "id": {
+                    "description": "Identificador único de la tarea",
                     "type": "integer",
                     "example": 1
                 },
                 "is_completed": {
+                    "description": "true solo cuando ambos usuarios han completado la tarea",
                     "type": "boolean",
                     "example": false
                 },
                 "title": {
+                    "description": "Título descriptivo de la tarea",
                     "type": "string",
                     "example": "Comprar comida"
                 },
                 "updated_at": {
+                    "description": "Fecha y hora de la última actualización",
                     "type": "string",
                     "example": "2024-01-01T00:00:00Z"
                 }
@@ -1155,28 +1203,34 @@
             "type": "object",
             "properties": {
                 "last_page": {
+                    "description": "Última página disponible",
                     "type": "integer",
                     "example": 1
                 },
                 "message": {
+                    "description": "Mensaje informativo",
                     "type": "string",
                     "example": "Aquí están todas las tareas. ¡Vamos a completarlas! 💪"
                 },
                 "page": {
+                    "description": "Página actual",
                     "type": "integer",
                     "example": 1
                 },
                 "per_page": {
+                    "description": "Cantidad de tareas por página",
                     "type": "integer",
                     "example": 10
                 },
                 "todos": {
+                    "description": "Lista de tareas encontradas",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/models.Todo"
                     }
                 },
                 "total": {
+                    "description": "Total de tareas que coinciden con el filtro",
                     "type": "integer",
                     "example": 5
                 }
@@ -1190,10 +1244,12 @@
             ],
             "properties": {
                 "description": {
+                    "description": "Nueva descripción de la tarea",
                     "type": "string",
                     "example": "Ir al supermercado y comprar frutas y verduras"
                 },
                 "title": {
+                    "description": "Nuevo título de la tarea (obligatorio)",
                     "type": "string",
                     "example": "Comprar comida"
                 }
@@ -1204,6 +1260,7 @@
             "type": "object",
             "properties": {
                 "completed": {
+                    "description": "true para marcar como completada, false para desmarcar",
                     "type": "boolean",
                     "example": true
                 }
@@ -1214,22 +1271,27 @@
             "type": "object",
             "properties": {
                 "created_at": {
+                    "description": "Fecha de creación de la cuenta",
                     "type": "string",
                     "example": "2024-01-01T00:00:00Z"
                 },
                 "id": {
+                    "description": "Identificador único del usuario",
                     "type": "integer",
                     "example": 1
                 },
                 "name": {
+                    "description": "Nombre real del usuario",
                     "type": "string",
                     "example": "Anyel"
                 },
                 "updated_at": {
+                    "description": "Fecha de la última actualización",
                     "type": "string",
                     "example": "2024-01-01T00:00:00Z"
                 },
                 "username": {
+                    "description": "Nombre de usuario único para autenticación",
                     "type": "string",
                     "example": "anyel"
                 }
@@ -1240,14 +1302,17 @@
             "type": "object",
             "properties": {
                 "id": {
+                    "description": "Identificador único del usuario",
                     "type": "integer",
                     "example": 1
                 },
                 "name": {
+                    "description": "Nombre real del usuario",
                     "type": "string",
                     "example": "Anyel"
                 },
                 "username": {
+                    "description": "Nombre de usuario",
                     "type": "string",
                     "example": "anyel"
                 }

@@ -28,6 +28,7 @@ type MessageStatusPayload struct {
 // PushMessagePayload contiene el cuerpo útil enviado al proveedor push.
 type PushMessagePayload struct {
 	Type       string    `json:"type"`
+	ChatID     string    `json:"chat_id"`
 	MessageID  uint      `json:"message_id"`
 	SenderID   uint      `json:"sender_id"`
 	SenderName string    `json:"sender_name"`

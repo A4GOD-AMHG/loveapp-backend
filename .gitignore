@@ -40,11 +40,15 @@ Thumbs.db
 # Logs
 *.log
 logs/
+run/
+*.pid
 
 # Database files
 *.db
 *.sqlite
 *.sqlite3
+data/
+bin/data/
 
 # Docker volumes
 postgres_data/
@@ -54,3 +58,4 @@ tmp/
 temp/
 .zencoder/
 .zenflow/
+.gocache/

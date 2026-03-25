@@ -1,75 +1,98 @@
-# LoveApp Backend 💕
+# LoveApp Backend
 
-Este es el backend de **LoveApp**, una aplicación móvil privada diseñada para mi novia y para mí. El objetivo es centralizar nuestra comunicación, organización y los momentos especiales que compartimos.
+Backend en Go para LoveApp. Expone la API, genera documentación Swagger y usa SQLite para el entorno local actual.
 
-## Tech Stack
+## Requisitos
 
-<div style="display: flex; align-items: center; gap: 10px;">
-  <img src="https://raw.githubusercontent.com/A4GOD-AMHG/Utils-for-repos/main/icons/go/go-original-wordmark.svg" alt="Go" width="65" height="65" />
-  <img src="https://raw.githubusercontent.com/A4GOD-AMHG/Utils-for-repos/main/icons/sqlite/sqlite-original.svg" alt="SQLite" width="65" height="65" />
-  <img src="https://raw.githubusercontent.com/A4GOD-AMHG/Utils-for-repos/main/icons/swagger/swagger-original.svg" alt="Swagger" width="65" height="65" />
-  <img src="https://raw.githubusercontent.com/A4GOD-AMHG/Utils-for-repos/main/icons/socketio/socketio-original.svg" alt="socketio" width="65" height="65" />
-</div>
+- Go instalado
+- `make`
+- Un archivo `.env` válido
 
-## Características
+## Estructura Operativa
 
--   💬 **Chat Privado**: Comunicación en tiempo real y segura entre nosotros.
--   ✅ **Lista de Tareas Compartida**: Para organizar nuestras metas y pendientes juntos.
--   ❤️ **Contador de Días Juntos**: Un espacio para llevar la cuenta de nuestro tiempo juntos.
--   🔔 **Notificaciones y Alarmas**: Recordatorios en tiempo real para fechas y eventos importantes.
--   🔐 **Autenticación Segura con JWT**: Protegiendo nuestra información.
--   📚 **Documentación Interactiva con Swagger**: Para probar y entender la API de forma sencilla.
+Estos paths se usan al correr o desplegar la app:
 
-## Guía de Inicio Rápido
+- `bin/`: binario compilado
+- `data/`: base de datos SQLite local
+- `logs/`: logs de ejecución
+- `run/`: archivos de control del proceso
+- `docs/`: Swagger generado
 
-Sigue estos pasos para levantar el backend en tu entorno local.
+### Qué es el archivo `.pid`
 
-1.  **Clona el repositorio**:
+El archivo `.pid` vive en `run/loveapp-backend.pid`. Solo guarda el PID del proceso que quedó corriendo en background.
 
-    ```bash
-    git clone https://github.com/A4GOD-AMHG/LoveApp-Backend.git
-    cd LoveApp-Backend
-    ```
+Sirve para que `make deploy` pueda detectar si hay una instancia previa y reemplazarla.
 
-2.  **Configura las variables de entorno**:
+Ese archivo no se versiona. Es runtime puro.
 
-    Crea un archivo `.env` a partir del ejemplo.
+## Qué debe ir al repo y qué no
 
-    ```bash
-    make env
-    ```
+Sí debe ir al repo:
 
-    Puedes editar el archivo `.env` si necesitas cambiar el puerto o el secreto del JWT.
+- código fuente
+- `go.mod` y `go.sum`
+- `Makefile`
+- `README.md`
+- `example.env`
+- `docs/` si quieres dejar Swagger ya generado dentro del repo
 
-3.  **Instala las dependencias**:
+No debe ir al repo:
 
-    Este comando descargará los módulos de Go y las herramientas necesarias como `swag`.
+- `.env`
+- `bin/`
+- `data/`
+- `logs/`
+- `run/`
+- `*.pid`
+- caches locales como `.gocache/`
 
-    ```bash
-    make setup
-    ```
+El `.gitignore` ya quedó alineado con eso.
 
-4.  **¡Lanza la aplicación!**:
+## Desarrollo Local
 
-    ```bash
-    make run
-    ```
+1. Instalar dependencias y herramientas:
 
-    El servidor se iniciará en `http://localhost:4418`.
+```bash
+make deps
+```
 
-## Comandos Útiles del Makefile
+2. Levantar en desarrollo:
 
--   `make run`: Inicia la aplicación en modo desarrollo.
--   `make build`: Genera la documentación de Swagger y compila el binario para producción.
--   `make swagger`: Regenera la documentación de Swagger manualmente.
--   `make setup`: Instala todas las dependencias del proyecto.
--   `make clean`: Elimina los binarios compilados y la base de datos local.
--   `make reset-db`: Borra la base de datos, ejecuta migraciones y vuelve a crear `anyel` y `alexis` con contraseña `password`.
+```bash
+make run
+```
 
-## Frontend
+La app arranca usando el puerto definido en `.env`.
 
-Este backend está diseñado para ser consumido por la aplicación móvil privada de LoveApp.
+## Despliegue
 
-## Autor
+### Deploy / Redeploy a producción
 
--   Alexis Manuel Hurtado García ([@A4GOD-AMHG](https://github.com/A4GOD-AMHG))
+```bash
+make deploy
+```
+
+Ese comando:
+
+- regenera Swagger
+- recompila el binario
+- mata la instancia anterior si existe
+- levanta la nueva
+- deja logs en `logs/loveapp-backend.log`
+- deja PID en `run/loveapp-backend.pid`
+
+## Make Targets
+
+- `make run`: ejecuta la app en desarrollo
+- `make build`: genera Swagger y compila el binario
+- `make deps`: descarga dependencias e instala `swag`
+- `make test`: tests unitarios
+- `make resetdb`: reinicia la base SQLite local
+- `make clean`: borra binario, base local y PID
+- `make deploy`: redeploy completo de producción
+
+## Notas de Producción
+
+- Si cambias variables en `.env`, vuelve a correr `make deploy`.
+- Si quieres que el proceso sobreviva reinicios del servidor, lo correcto después es moverlo a `systemd`, `supervisor` o Docker. El flujo actual con `nohup` sirve para dejarlo desplegado ya, pero no es un process manager formal.

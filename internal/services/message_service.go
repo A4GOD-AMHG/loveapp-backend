@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/A4GOD-AMHG/LoveApp-Backend/internal/models"
@@ -105,10 +106,11 @@ func (s *messageService) SendMessage(senderID uint, content string) (*models.Mes
 	if err != nil {
 		log.Printf("error fetching push tokens for user %d: %v", createdMsg.ReceiverID, err)
 	} else if err := s.pushService.SendNewMessage(receiverTokens, models.PushMessagePayload{
-		Type:       "new_message",
+		Type:       "chat_message",
+		ChatID:     "private-main",
 		MessageID:  createdMsg.ID,
 		SenderID:   createdMsg.SenderID,
-		SenderName: createdMsg.Sender.Name,
+		SenderName: normalizeSenderName(createdMsg.Sender.Name),
 		Content:    createdMsg.Content,
 		CreatedAt:  createdMsg.CreatedAt,
 	}); err != nil {
@@ -116,6 +118,20 @@ func (s *messageService) SendMessage(senderID uint, content string) (*models.Mes
 	}
 
 	return createdMsg, nil
+}
+
+func normalizeSenderName(rawName string) string {
+	name := strings.TrimSpace(rawName)
+	lowerName := strings.ToLower(name)
+
+	switch {
+	case strings.Contains(lowerName, "alexis"):
+		return "Alexis"
+	case strings.Contains(lowerName, "anyel"):
+		return "Anyel"
+	default:
+		return name
+	}
 }
 
 // EditMessage actualiza el contenido de un mensaje existente.

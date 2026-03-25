@@ -122,21 +122,7 @@ func (s *pushService) SendNewMessage(tokens []models.DevicePushToken, payload mo
 
 	messages := make([]*messaging.Message, 0, len(tokens))
 	for _, token := range tokens {
-		messages = append(messages, &messaging.Message{
-			Token: token.PushToken,
-			Data: map[string]string{
-				"type":        payload.Type,
-				"message_id":  strconv.FormatUint(uint64(payload.MessageID), 10),
-				"sender_id":   strconv.FormatUint(uint64(payload.SenderID), 10),
-				"sender_name": payload.SenderName,
-				"content":     payload.Content,
-				"created_at":  payload.CreatedAt.Format(time.RFC3339),
-			},
-			Notification: &messaging.Notification{
-				Title: payload.SenderName,
-				Body:  payload.Content,
-			},
-		})
+		messages = append(messages, buildMessagePushPayload(token.PushToken, payload))
 	}
 
 	batchResponse, err := s.client.SendEach(ctx, messages)
@@ -152,4 +138,33 @@ func (s *pushService) SendNewMessage(tokens []models.DevicePushToken, payload mo
 	}
 
 	return nil
+}
+
+func buildMessagePushPayload(token string, payload models.PushMessagePayload) *messaging.Message {
+	return &messaging.Message{
+		Token: token,
+		Data: map[string]string{
+			"type":        payload.Type,
+			"chat_id":     payload.ChatID,
+			"message_id":  strconv.FormatUint(uint64(payload.MessageID), 10),
+			"sender_id":   strconv.FormatUint(uint64(payload.SenderID), 10),
+			"sender_name": payload.SenderName,
+			"content":     payload.Content,
+			"created_at":  payload.CreatedAt.Format(time.RFC3339),
+		},
+		Android: &messaging.AndroidConfig{
+			Priority: "high",
+		},
+		APNS: &messaging.APNSConfig{
+			Headers: map[string]string{
+				"apns-priority":  "5",
+				"apns-push-type": "background",
+			},
+			Payload: &messaging.APNSPayload{
+				Aps: &messaging.Aps{
+					ContentAvailable: true,
+				},
+			},
+		},
+	}
 }

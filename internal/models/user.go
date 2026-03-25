@@ -27,8 +27,8 @@ type UserSummary struct {
 // LoginRequest contiene las credenciales enviadas para autenticarse en el sistema.
 // @Description Credenciales de inicio de sesión
 type LoginRequest struct {
-	Username string `json:"username" validate:"required" example:"anyel"`    // Nombre de usuario (obligatorio)
-	Password string `json:"password" validate:"required" example:"password"` // Contraseña en texto plano (obligatorio)
+	Username string `json:"username" validate:"required" example:"anyel"` // Nombre de usuario (obligatorio)
+	Password string `json:"password" validate:"required" example:"anyel"` // Contraseña en texto plano (obligatorio)
 }
 
 // LoginResponse contiene el token JWT y los datos del usuario tras un inicio de sesión exitoso.
