@@ -3,7 +3,6 @@
 package controllers
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/A4GOD-AMHG/LoveApp-Backend/internal/models"
@@ -18,10 +17,8 @@ type AuthController struct {
 
 // NewAuthController crea y retorna una nueva instancia de AuthController
 // con su servicio de autenticación ya inicializado.
-func NewAuthController() *AuthController {
-	return &AuthController{
-		authService: services.NewAuthService(),
-	}
+func NewAuthController(authService *services.AuthService) *AuthController {
+	return &AuthController{authService: authService}
 }
 
 // Login maneja el inicio de sesión
@@ -38,26 +35,19 @@ func NewAuthController() *AuthController {
 // @Router /auth/login [post]
 func (h *AuthController) Login(w http.ResponseWriter, r *http.Request) {
 	var req models.LoginRequest
-
-	// Decodificar el cuerpo JSON de la solicitud en la estructura de login
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		response.BadRequest(w, "Por favor, revisa los datos ingresados.")
+	if !decodeJSON(w, r, &req, "Por favor, revisa los datos ingresados.") {
 		return
 	}
-
-	// Validar que los campos obligatorios no estén vacíos
 	if req.Username == "" || req.Password == "" {
 		response.BadRequest(w, "El usuario y la contraseña son obligatorios.")
 		return
 	}
 
-	// Delegar la autenticación al servicio y obtener el token JWT
 	loginResponse, err := h.authService.Login(&req)
 	if err != nil {
 		response.Unauthorized(w, "Las credenciales no son correctas. ¡Inténtalo de nuevo!")
 		return
 	}
-
 	response.JSON(w, http.StatusOK, loginResponse)
 }
 
@@ -76,36 +66,27 @@ func (h *AuthController) Login(w http.ResponseWriter, r *http.Request) {
 // @Failure 500 {object} models.ErrorResponse "Error interno del servidor"
 // @Router /auth/change-password [post]
 func (h *AuthController) ChangePassword(w http.ResponseWriter, r *http.Request) {
-	// Obtener el usuario autenticado inyectado por el middleware de autenticación
-	user := r.Context().Value("user").(*models.User)
-
-	var req models.ChangePasswordRequest
-
-	// Decodificar el cuerpo JSON con la nueva contraseña
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		response.BadRequest(w, "Por favor, revisa los datos ingresados.")
+	user, ok := currentUser(w, r)
+	if !ok {
 		return
 	}
-
-	// Validar que la nueva contraseña no esté vacía
+	var req models.ChangePasswordRequest
+	if !decodeJSON(w, r, &req, "Por favor, revisa los datos ingresados.") {
+		return
+	}
 	if req.NewPassword == "" {
 		response.BadRequest(w, "Debes ingresar la nueva contraseña.")
 		return
 	}
-
-	// Validar longitud mínima de la nueva contraseña
 	if len(req.NewPassword) < 6 {
 		response.BadRequest(w, "La nueva contraseña debe tener al menos 6 caracteres.")
 		return
 	}
 
-	// Delegar el cambio de contraseña al servicio de autenticación
-	_, err := h.authService.ChangePassword(user.ID, &req)
-	if err != nil {
+	if _, err := h.authService.ChangePassword(user.ID, &req); err != nil {
 		response.InternalServerError(w, "Tuvimos un problema al cambiar tu contraseña. Inténtalo más tarde.")
 		return
 	}
-
 	response.JSON(w, http.StatusOK, models.ChangePasswordResponse{
 		Message: "¡Contraseña actualizada con éxito! ✨",
 	})

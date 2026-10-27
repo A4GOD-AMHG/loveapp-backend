@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"testing"
 
+	"github.com/A4GOD-AMHG/LoveApp-Backend/database"
 	pkg_db "github.com/A4GOD-AMHG/LoveApp-Backend/pkg/database"
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -35,55 +36,9 @@ func SetupTestDB(t *testing.T) func() {
 		t.Fatalf("error al habilitar claves foráneas: %v", err)
 	}
 
-	// Crear esquema de tablas necesarias para los tests
-	schema := []string{
-		`CREATE TABLE IF NOT EXISTS users (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			username TEXT NOT NULL UNIQUE,
-			name TEXT,
-			password TEXT NOT NULL,
-			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-		)`,
-		`CREATE TABLE IF NOT EXISTS todos (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			title TEXT NOT NULL,
-			description TEXT,
-			creator_id INTEGER NOT NULL,
-			completed_anyel INTEGER NOT NULL DEFAULT 0,
-			completed_alexis INTEGER NOT NULL DEFAULT 0,
-			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-			FOREIGN KEY (creator_id) REFERENCES users(id) ON DELETE CASCADE
-		)`,
-		`CREATE TABLE IF NOT EXISTS messages (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			sender_id INTEGER NOT NULL,
-			receiver_id INTEGER NOT NULL,
-			content TEXT NOT NULL,
-			status TEXT NOT NULL DEFAULT 'sent',
-			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-			FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
-			FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE
-		)`,
-		`CREATE TABLE IF NOT EXISTS device_push_tokens (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			user_id INTEGER NOT NULL,
-			platform TEXT NOT NULL,
-			push_token TEXT NOT NULL UNIQUE,
-			device_name TEXT NOT NULL,
-			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-			UNIQUE(user_id, platform, device_name),
-			FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-		)`,
-	}
-
-	for _, stmt := range schema {
-		if _, err := pkg_db.DB.Exec(stmt); err != nil {
-			t.Fatalf("error al crear esquema: %v\nSQL: %s", err, stmt)
-		}
+	// Mismo esquema que producción para que los tests no diverjan de las migraciones
+	if err := database.Migrate(); err != nil {
+		t.Fatalf("error al crear esquema: %v", err)
 	}
 
 	// Función de limpieza: cerrar la conexión al finalizar el test

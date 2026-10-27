@@ -134,7 +134,7 @@ func (r *messageRepository) GetConversation(user1ID, user2ID uint, page, perPage
 		JOIN users s ON m.sender_id = s.id
 		JOIN users r ON m.receiver_id = r.id
 		WHERE (m.sender_id = ? AND m.receiver_id = ?) OR (m.sender_id = ? AND m.receiver_id = ?)
-		ORDER BY m.created_at DESC
+		ORDER BY m.created_at DESC, m.id DESC
 		LIMIT ? OFFSET ?`
 	rows, err := r.db.Query(query, user1ID, user2ID, user2ID, user1ID, perPage, offset)
 	if err != nil {
@@ -157,7 +157,7 @@ func (r *messageRepository) GetConversation(user1ID, user2ID uint, page, perPage
 		messages = append(messages, msg)
 	}
 
-	return messages, nil
+	return messages, rows.Err()
 }
 
 // CountUnreadByReceiver retorna la cantidad de mensajes cuyo destinatario es userID

@@ -22,7 +22,6 @@ import (
 	pkg_database "github.com/A4GOD-AMHG/LoveApp-Backend/pkg/database"
 	"github.com/A4GOD-AMHG/LoveApp-Backend/pkg/websocket"
 	"github.com/A4GOD-AMHG/LoveApp-Backend/routes"
-	httpSwagger "github.com/swaggo/http-swagger"
 )
 
 // main es la función de arranque del servidor.
@@ -59,27 +58,18 @@ func main() {
 	// Configurar metadatos de Swagger para la documentación interactiva
 	docs.SwaggerInfo.Title = "API de LoveApp"
 	docs.SwaggerInfo.Description = "Esta es la API para la aplicación LoveApp."
-	// docs.SwaggerInfo.Version = "1.0"
-	// docs.SwaggerInfo.Host = "localhost:4418"
-	// docs.SwaggerInfo.BasePath = "/"
-	// docs.SwaggerInfo.Schemes = []string{"http"}
 
-	// Crear e iniciar el hub de WebSocket en una goroutine separada
 	hub := websocket.NewHub()
 	go hub.Run()
 
-	// Configurar el enrutador con todas las rutas de la aplicación
-	r := routes.SetupRoutes(hub)
-
-	// Registrar el handler de Swagger UI
-	r.PathPrefix("/swagger/").Handler(httpSwagger.WrapHandler)
+	handler := routes.SetupRoutes(hub)
 
 	// Obtener el puerto del servidor desde la configuración
 	port := config.AppConfig.GetServerPort()
 	log.Printf("Servidor iniciado en el puerto %s", port)
 
 	// Iniciar el servidor HTTP y escuchar conexiones entrantes
-	if err := http.ListenAndServe(port, r); err != nil {
+	if err := http.ListenAndServe(port, handler); err != nil {
 		log.Fatalf("Error al iniciar el servidor: %v", err)
 	}
 }

@@ -4,55 +4,44 @@ package websocket
 import (
 	"encoding/json"
 	"log"
-	"sync"
 )
 
-// Hub centraliza la gestión de clientes WebSocket conectados y la distribución de eventos.
-// Mantiene un mapa de clientes activos indexado por userID para envíos dirigidos.
+// Hub centraliza los clientes WebSocket conectados y la distribución de eventos.
+// Un usuario puede tener varias conexiones (varios dispositivos o una reconexión
+// que llega antes de que el servidor detecte la caída de la anterior).
+// Todo el estado lo modifica únicamente la goroutine de Run, por eso no usa mutex.
 type Hub struct {
-	clients    map[uint]*Client // Mapa de clientes conectados: userID → *Client
-	broadcast  chan *Event      // Canal de eventos a distribuir a los clientes
-	register   chan *Client     // Canal para registrar nuevos clientes al conectarse
-	unregister chan *Client     // Canal para eliminar clientes al desconectarse
-	mu         sync.RWMutex     // Mutex de lectura/escritura para proteger el mapa de clientes
+	clients    map[uint]map[*Client]struct{}
+	broadcast  chan *Event
+	register   chan *Client
+	unregister chan *Client
 }
 
-// NewHub crea e inicializa un nuevo Hub con todos sus canales y el mapa de clientes vacío.
+// NewHub crea un Hub vacío.
 func NewHub() *Hub {
 	return &Hub{
 		broadcast:  make(chan *Event),
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
-		clients:    make(map[uint]*Client),
+		clients:    make(map[uint]map[*Client]struct{}),
 	}
 }
 
-// Run inicia el bucle principal del Hub en una goroutine.
-// Escucha continuamente tres tipos de eventos:
-//   - register: registra un nuevo cliente y lo agrega al mapa
-//   - unregister: elimina un cliente desconectado y cierra su canal de envío
-//   - broadcast: distribuye un mensaje JSON al remitente y al destinatario del evento
-//
-// Debe ejecutarse en una goroutine separada: go hub.Run()
+// Run procesa registros, desregistros y eventos. Debe ejecutarse con: go hub.Run()
 func (h *Hub) Run() {
 	for {
 		select {
 		case client := <-h.register:
-			// Registrar el nuevo cliente en el mapa protegido por mutex
-			h.mu.Lock()
-			h.clients[client.userID] = client
-			h.mu.Unlock()
+			if h.clients[client.userID] == nil {
+				h.clients[client.userID] = make(map[*Client]struct{})
+			}
+			h.clients[client.userID][client] = struct{}{}
 			log.Printf("Client connected: %d", client.userID)
 
 		case client := <-h.unregister:
-			// Eliminar el cliente del mapa y cerrar su canal de envío si estaba registrado
-			h.mu.Lock()
-			if _, ok := h.clients[client.userID]; ok {
-				delete(h.clients, client.userID)
-				close(client.send)
+			if h.remove(client) {
 				log.Printf("Client disconnected: %d", client.userID)
 			}
-			h.mu.Unlock()
 
 		case event := <-h.broadcast:
 			message, err := json.Marshal(event)
@@ -60,38 +49,40 @@ func (h *Hub) Run() {
 				log.Printf("error marshalling broadcast event: %v", err)
 				continue
 			}
-
-			h.mu.Lock()
-
-			// Enviar el evento al destinatario si está conectado
-			if client, ok := h.clients[event.ReceiverID]; ok {
-				select {
-				case client.send <- message:
-				default:
-					// Canal lleno: desconectar al cliente para evitar bloqueos
-					close(client.send)
-					delete(h.clients, client.userID)
-				}
+			h.sendTo(event.ReceiverID, message)
+			if event.SenderID != event.ReceiverID {
+				h.sendTo(event.SenderID, message)
 			}
-
-			// También enviar al remitente para confirmar el envío y actualizar su UI
-			if client, ok := h.clients[event.SenderID]; ok {
-				select {
-				case client.send <- message:
-				default:
-					// Canal lleno: desconectar al cliente para evitar bloqueos
-					close(client.send)
-					delete(h.clients, client.userID)
-				}
-			}
-
-			h.mu.Unlock()
 		}
 	}
 }
 
-// BroadcastEvent encola un evento para que el hub lo serialice y distribuya.
-// Los clientes relevantes (remitente y destinatario) recibirán el evento en tiempo real.
+func (h *Hub) sendTo(userID uint, message []byte) {
+	for client := range h.clients[userID] {
+		select {
+		case client.send <- message:
+		default:
+			// Buffer lleno: el cliente está atascado, se desconecta.
+			h.remove(client)
+		}
+	}
+}
+
+// remove elimina al cliente y cierra su canal una sola vez.
+func (h *Hub) remove(client *Client) bool {
+	conns := h.clients[client.userID]
+	if _, ok := conns[client]; !ok {
+		return false
+	}
+	delete(conns, client)
+	if len(conns) == 0 {
+		delete(h.clients, client.userID)
+	}
+	close(client.send)
+	return true
+}
+
+// BroadcastEvent encola un evento para el remitente y el destinatario.
 func (h *Hub) BroadcastEvent(event *Event) {
 	h.broadcast <- event
 }

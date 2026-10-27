@@ -17,13 +17,9 @@ type AuthService struct {
 	messageRepo repository.MessageRepository
 }
 
-// NewAuthService crea y retorna una nueva instancia de AuthService
-// con su repositorio de usuarios ya inicializado.
-func NewAuthService() *AuthService {
-	return &AuthService{
-		userRepo:    repository.NewUserRepository(),
-		messageRepo: repository.NewMessageRepository(),
-	}
+// NewAuthService crea una instancia de AuthService.
+func NewAuthService(userRepo *repository.UserRepository, messageRepo repository.MessageRepository) *AuthService {
+	return &AuthService{userRepo: userRepo, messageRepo: messageRepo}
 }
 
 // Login autentica a un usuario verificando sus credenciales y genera un token JWT.

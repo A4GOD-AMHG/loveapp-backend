@@ -26,7 +26,7 @@ func Seed() error {
 	for _, u := range users {
 		var id int
 		// Verificar si el usuario ya existe en la base de datos
-		err := database.DB.QueryRow("SELECT id FROM users WHERE username = $1", u.Username).Scan(&id)
+		err := database.DB.QueryRow("SELECT id FROM users WHERE username = ?", u.Username).Scan(&id)
 		if err == nil {
 			// El usuario ya existe, saltar sin error
 			log.Printf("El usuario %s ya existe, omitiendo...", u.Username)
@@ -40,11 +40,11 @@ func Seed() error {
 		}
 
 		// Insertar el nuevo usuario en la base de datos
-		_, err = database.DB.Exec("INSERT INTO users (username, name, password) VALUES ($1, $2, $3)", u.Username, u.Name, string(hash))
+		_, err = database.DB.Exec("INSERT INTO users (username, name, password) VALUES (?, ?, ?)", u.Username, u.Name, string(hash))
 		if err != nil {
 			return err
 		}
-		log.Printf("Usuario creado: %s (%s) con contraseña: %s", u.Username, u.Name, u.Password)
+		log.Printf("Usuario creado: %s (%s)", u.Username, u.Name)
 	}
 
 	log.Println("Sembrado de base de datos completado exitosamente")

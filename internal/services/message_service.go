@@ -13,41 +13,54 @@ import (
 	"github.com/A4GOD-AMHG/LoveApp-Backend/pkg/websocket"
 )
 
+const (
+	StatusSent      = "sent"
+	StatusDelivered = "delivered"
+	StatusRead      = "read"
+
+	// editWindow es el tiempo durante el cual el remitente puede editar o borrar.
+	editWindow = time.Hour
+)
+
+// statusRank ordena los estados para impedir regresiones (read -> delivered).
+var statusRank = map[string]int{StatusSent: 0, StatusDelivered: 1, StatusRead: 2}
+
 // MessageService define el contrato de operaciones de negocio sobre mensajes.
 type MessageService interface {
-	// SendMessage envía un nuevo mensaje del remitente al otro usuario del sistema.
 	SendMessage(senderID uint, content string) (*models.Message, error)
-	// EditMessage edita el contenido de un mensaje si fue enviado hace menos de 1 hora.
 	EditMessage(userID uint, messageID int64, content string) (*models.Message, error)
-	// DeleteMessage elimina un mensaje si fue enviado hace menos de 1 hora.
 	DeleteMessage(userID uint, messageID int64) error
-	// MarkAsRead marca un mensaje como leído por el destinatario.
 	MarkAsRead(userID uint, messageID int64) error
-	// MarkAsDelivered marca un mensaje como entregado al destinatario.
 	MarkAsDelivered(userID uint, messageID int64) error
-	// GetConversation retorna el historial paginado de mensajes entre dos usuarios.
 	GetConversation(userID uint, page, perPage int) ([]models.Message, error)
-	// GetUnreadCount retorna la cantidad de mensajes no leídos del usuario autenticado.
 	GetUnreadCount(userID uint) (int, error)
 }
 
-// messageService es la implementación concreta de MessageService.
-type messageService struct {
-	messageRepo repository.MessageRepository         // Repositorio de mensajes
-	userRepo    *repository.UserRepository           // Repositorio de usuarios (para encontrar al destinatario)
-	deviceRepo  repository.DevicePushTokenRepository // Repositorio de tokens push del destinatario
-	hub         *websocket.Hub                       // Hub de WebSocket para enviar eventos en tiempo real
-	pushService PushService                          // Servicio para notificaciones push
+// EventBroadcaster difunde eventos en tiempo real (implementado por websocket.Hub).
+type EventBroadcaster interface {
+	BroadcastEvent(event *websocket.Event)
 }
 
-// NewMessageService crea y retorna una nueva instancia de messageService
-// con todas sus dependencias inyectadas.
+// OtherUserFinder resuelve al otro integrante de la pareja.
+type OtherUserFinder interface {
+	GetOtherUser(currentUserID uint) (*models.User, error)
+}
+
+type messageService struct {
+	messageRepo repository.MessageRepository
+	userRepo    OtherUserFinder
+	deviceRepo  repository.DevicePushTokenRepository
+	hub         EventBroadcaster
+	pushService PushService
+}
+
+// NewMessageService crea un servicio de mensajes con sus dependencias inyectadas.
 func NewMessageService(
 	messageRepo repository.MessageRepository,
-	userRepo *repository.UserRepository,
+	userRepo OtherUserFinder,
 	deviceRepo repository.DevicePushTokenRepository,
 	pushService PushService,
-	hub *websocket.Hub,
+	hub EventBroadcaster,
 ) MessageService {
 	return &messageService{
 		messageRepo: messageRepo,
@@ -58,66 +71,58 @@ func NewMessageService(
 	}
 }
 
-// SendMessage crea y persiste un nuevo mensaje del remitente al otro usuario del sistema.
-// Determina automáticamente el destinatario como el único usuario distinto al remitente.
-// Difunde el evento "message_sent" por WebSocket tras guardar el mensaje.
+// SendMessage persiste un mensaje hacia el otro usuario, lo difunde por WebSocket
+// y envía la notificación push en segundo plano.
 func (s *messageService) SendMessage(senderID uint, content string) (*models.Message, error) {
-	// Validar que el contenido del mensaje no esté vacío
+	content = strings.TrimSpace(content)
 	if content == "" {
-		return nil, errors.New("message content cannot be empty")
+		return nil, ErrInvalidInput
 	}
 
-	// Obtener automáticamente al otro usuario como destinatario
-	otherUser, err := s.userRepo.GetOtherUser(senderID)
+	otherUser, err := s.otherUser(senderID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to determine receiver: %w", err)
+		return nil, err
 	}
 
-	// Construir la entidad mensaje con estado inicial "sent"
-	msg := &models.Message{
+	id, err := s.messageRepo.Create(&models.Message{
 		SenderID:   senderID,
 		ReceiverID: uint(otherUser.ID),
 		Content:    content,
-		Status:     "sent",
-	}
-
-	// Persistir el mensaje en la base de datos
-	id, err := s.messageRepo.Create(msg)
+		Status:     StatusSent,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to send message: %w", err)
 	}
-	msg.ID = uint(id)
 
-	// Recargar el mensaje completo desde la base de datos (con datos JOIN del remitente/destinatario)
-	createdMsg, err := s.messageRepo.FindByID(id)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch created message: %w", err)
+	msg, err := s.messageRepo.FindByID(id)
+	if err != nil || msg == nil {
+		return nil, fmt.Errorf("failed to fetch created message: %v", err)
 	}
 
-	// Notificar a los clientes conectados vía WebSocket
-	s.hub.BroadcastEvent(&websocket.Event{
-		Type:       websocket.EventMessageSent,
-		SenderID:   createdMsg.SenderID,
-		ReceiverID: createdMsg.ReceiverID,
-		Payload:    *createdMsg,
-	})
+	s.broadcast(websocket.EventMessageSent, msg, *msg)
+	// El push no debe retrasar la respuesta HTTP (FCM puede tardar segundos).
+	go s.notifyReceiver(*msg)
 
-	receiverTokens, err := s.deviceRepo.FindByUserID(int64(createdMsg.ReceiverID))
+	return msg, nil
+}
+
+func (s *messageService) notifyReceiver(msg models.Message) {
+	tokens, err := s.deviceRepo.FindByUserID(int64(msg.ReceiverID))
 	if err != nil {
-		log.Printf("error fetching push tokens for user %d: %v", createdMsg.ReceiverID, err)
-	} else if err := s.pushService.SendNewMessage(receiverTokens, models.PushMessagePayload{
+		log.Printf("error fetching push tokens for user %d: %v", msg.ReceiverID, err)
+		return
+	}
+	if err := s.pushService.SendNewMessage(tokens, models.PushMessagePayload{
 		Type:       "chat_message",
 		ChatID:     "private-main",
-		MessageID:  createdMsg.ID,
-		SenderID:   createdMsg.SenderID,
-		SenderName: normalizeSenderName(createdMsg.Sender.Name),
-		Content:    createdMsg.Content,
-		CreatedAt:  createdMsg.CreatedAt,
+		MessageID:  msg.ID,
+		SenderID:   msg.SenderID,
+		SenderName: normalizeSenderName(msg.Sender.Name),
+		Content:    msg.Content,
+		CreatedAt:  msg.CreatedAt,
 	}); err != nil {
-		log.Printf("error sending push notification for message %d: %v", createdMsg.ID, err)
+		log.Printf("error sending push notification for message %d: %v", msg.ID, err)
 	}
-
-	return createdMsg, nil
 }
 
 func normalizeSenderName(rawName string) string {
@@ -134,192 +139,135 @@ func normalizeSenderName(rawName string) string {
 	}
 }
 
-// EditMessage actualiza el contenido de un mensaje existente.
-// Solo el remitente puede editar su propio mensaje y únicamente dentro de la primera hora de enviado.
-// Difunde el evento "message_updated" por WebSocket tras la edición.
+// EditMessage actualiza el contenido; solo el remitente y dentro de editWindow.
 func (s *messageService) EditMessage(userID uint, messageID int64, content string) (*models.Message, error) {
-	// Verificar que el mensaje existe
-	msg, err := s.messageRepo.FindByID(messageID)
-	if err != nil || msg == nil {
-		return nil, errors.New("message not found")
+	content = strings.TrimSpace(content)
+	if content == "" {
+		return nil, ErrInvalidInput
 	}
 
-	// Verificar que el usuario solicitante es el remitente del mensaje
-	if msg.SenderID != userID {
-		return nil, errors.New("user not authorized to edit this message")
+	if _, err := s.findOwnRecent(userID, messageID); err != nil {
+		return nil, err
 	}
 
-	// Verificar que no ha pasado más de 1 hora desde el envío
-	if time.Since(msg.CreatedAt) > time.Hour {
-		return nil, errors.New("message can no longer be edited")
-	}
-
-	// Actualizar el contenido en la base de datos
 	if err := s.messageRepo.UpdateContent(messageID, content); err != nil {
 		return nil, fmt.Errorf("failed to update message: %w", err)
 	}
 
-	// Recargar el mensaje actualizado para retornar el estado completo
-	updatedMsg, err := s.messageRepo.FindByID(messageID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch updated message: %w", err)
+	updated, err := s.messageRepo.FindByID(messageID)
+	if err != nil || updated == nil {
+		return nil, fmt.Errorf("failed to fetch updated message: %v", err)
 	}
 
-	// Notificar a los clientes conectados del cambio vía WebSocket
-	s.hub.BroadcastEvent(&websocket.Event{
-		Type:       websocket.EventMessageUpdated,
-		SenderID:   updatedMsg.SenderID,
-		ReceiverID: updatedMsg.ReceiverID,
-		Payload: models.MessageStatusPayload{
-			ID:        updatedMsg.ID,
-			Status:    updatedMsg.Status,
-			UpdatedAt: updatedMsg.UpdatedAt,
-		},
-	})
-
-	return updatedMsg, nil
+	// Se envía el mensaje completo para que el cliente pueda refrescar el contenido.
+	s.broadcast(websocket.EventMessageUpdated, updated, *updated)
+	return updated, nil
 }
 
-// DeleteMessage elimina permanentemente un mensaje de la base de datos.
-// Solo el remitente puede eliminar su mensaje y únicamente dentro de la primera hora de enviado.
-// Difunde el evento "message_deleted" por WebSocket tras la eliminación.
+// DeleteMessage elimina un mensaje; solo el remitente y dentro de editWindow.
 func (s *messageService) DeleteMessage(userID uint, messageID int64) error {
-	// Verificar que el mensaje existe
-	msg, err := s.messageRepo.FindByID(messageID)
-	if err != nil || msg == nil {
-		return errors.New("message not found")
+	msg, err := s.findOwnRecent(userID, messageID)
+	if err != nil {
+		return err
 	}
 
-	// Verificar que el usuario solicitante es el remitente del mensaje
-	if msg.SenderID != userID {
-		return errors.New("user not authorized to delete this message")
-	}
-
-	// Verificar que no ha pasado más de 1 hora desde el envío
-	if time.Since(msg.CreatedAt) > time.Hour {
-		return errors.New("message can no longer be deleted")
-	}
-
-	// Eliminar el mensaje de la base de datos
 	if err := s.messageRepo.Delete(messageID); err != nil {
 		return fmt.Errorf("failed to delete message: %w", err)
 	}
 
-	// Notificar a los clientes conectados del evento de eliminación vía WebSocket
-	// Se envían los datos del mensaje original para que el cliente pueda identificarlo
-	s.hub.BroadcastEvent(&websocket.Event{
-		Type:       websocket.EventMessageDeleted,
-		SenderID:   msg.SenderID,
-		ReceiverID: msg.ReceiverID,
-		Payload:    *msg,
-	})
-
+	s.broadcast(websocket.EventMessageDeleted, msg, *msg)
 	return nil
 }
 
-// MarkAsRead marca un mensaje como leído por el destinatario.
-// Solo el destinatario puede marcar el mensaje como leído.
-// Si el mensaje ya estaba marcado como leído, no hace nada.
-// Difunde el evento "message_read" por WebSocket tras el cambio.
+// MarkAsRead marca un mensaje como leído; solo el destinatario puede hacerlo.
 func (s *messageService) MarkAsRead(userID uint, messageID int64) error {
-	// Verificar que el mensaje existe
-	msg, err := s.messageRepo.FindByID(messageID)
-	if err != nil || msg == nil {
-		return errors.New("message not found")
-	}
-
-	// Solo el destinatario puede marcar el mensaje como leído
-	if msg.ReceiverID != userID {
-		return errors.New("user not authorized to mark this message as read")
-	}
-
-	// Evitar actualización innecesaria si ya está marcado como leído
-	if msg.Status == "read" {
-		return nil
-	}
-
-	// Actualizar el estado del mensaje en la base de datos
-	if err := s.messageRepo.UpdateStatus(messageID, "read"); err != nil {
-		return fmt.Errorf("failed to mark message as read: %w", err)
-	}
-
-	// Actualizar el struct local para el evento WebSocket
-	msg.Status = "read"
-	msg.UpdatedAt = time.Now()
-
-	// Notificar a los clientes conectados del cambio de estado vía WebSocket
-	s.hub.BroadcastEvent(&websocket.Event{
-		Type:       websocket.EventMessageRead,
-		SenderID:   msg.SenderID,
-		ReceiverID: msg.ReceiverID,
-		Payload: models.MessageStatusPayload{
-			ID:        msg.ID,
-			Status:    msg.Status,
-			UpdatedAt: msg.UpdatedAt,
-		},
-	})
-
-	return nil
+	return s.advanceStatus(userID, messageID, StatusRead, websocket.EventMessageRead)
 }
 
-// MarkAsDelivered marca un mensaje como entregado al destinatario.
-// Solo el destinatario puede marcar el mensaje como entregado.
-// Si el mensaje ya está en estado "delivered" o "read", no hace nada.
-// Difunde el evento "message_delivered" por WebSocket tras el cambio.
+// MarkAsDelivered marca un mensaje como entregado; solo el destinatario puede hacerlo.
 func (s *messageService) MarkAsDelivered(userID uint, messageID int64) error {
-	// Verificar que el mensaje existe
-	msg, err := s.messageRepo.FindByID(messageID)
-	if err != nil || msg == nil {
-		return errors.New("message not found")
-	}
+	return s.advanceStatus(userID, messageID, StatusDelivered, websocket.EventMessageDelivered)
+}
 
-	// Solo el destinatario puede marcar el mensaje como entregado
+func (s *messageService) advanceStatus(userID uint, messageID int64, status, eventType string) error {
+	msg, err := s.find(messageID)
+	if err != nil {
+		return err
+	}
 	if msg.ReceiverID != userID {
-		return errors.New("user not authorized to mark this message as delivered")
+		return ErrForbidden
 	}
-
-	// Evitar regresión de estado: "read" no puede volver a "delivered"
-	if msg.Status == "delivered" || msg.Status == "read" {
+	if statusRank[msg.Status] >= statusRank[status] {
 		return nil
 	}
 
-	// Actualizar el estado del mensaje en la base de datos
-	if err := s.messageRepo.UpdateStatus(messageID, "delivered"); err != nil {
-		return fmt.Errorf("failed to mark message as delivered: %w", err)
+	if err := s.messageRepo.UpdateStatus(messageID, status); err != nil {
+		return fmt.Errorf("failed to update message status: %w", err)
 	}
 
-	// Actualizar el struct local para el evento WebSocket
-	msg.Status = "delivered"
+	msg.Status = status
 	msg.UpdatedAt = time.Now()
-
-	// Notificar a los clientes conectados del cambio de estado vía WebSocket
-	s.hub.BroadcastEvent(&websocket.Event{
-		Type:       websocket.EventMessageDelivered,
-		SenderID:   msg.SenderID,
-		ReceiverID: msg.ReceiverID,
-		Payload: models.MessageStatusPayload{
-			ID:        msg.ID,
-			Status:    msg.Status,
-			UpdatedAt: msg.UpdatedAt,
-		},
+	s.broadcast(eventType, msg, models.MessageStatusPayload{
+		ID:        msg.ID,
+		Status:    msg.Status,
+		UpdatedAt: msg.UpdatedAt,
 	})
-
 	return nil
 }
 
-// GetConversation retorna el historial de mensajes entre el usuario actual y el otro usuario,
-// con soporte para paginación. Determina automáticamente al otro participante de la conversación.
+// GetConversation retorna el historial paginado con el otro usuario.
 func (s *messageService) GetConversation(userID uint, page, perPage int) ([]models.Message, error) {
-	// Identificar al otro usuario de la conversación
-	otherUser, err := s.userRepo.GetOtherUser(userID)
+	otherUser, err := s.otherUser(userID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to determine other user: %w", err)
+		return nil, err
 	}
-	// Delegar la consulta paginada al repositorio de mensajes
 	return s.messageRepo.GetConversation(userID, uint(otherUser.ID), page, perPage)
 }
 
 // GetUnreadCount retorna la cantidad de mensajes no leídos cuyo destinatario es userID.
 func (s *messageService) GetUnreadCount(userID uint) (int, error) {
 	return s.messageRepo.CountUnreadByReceiver(userID)
+}
+
+func (s *messageService) otherUser(userID uint) (*models.User, error) {
+	user, err := s.userRepo.GetOtherUser(userID)
+	if errors.Is(err, repository.ErrNotFound) {
+		return nil, ErrNoReceiver
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to determine receiver: %w", err)
+	}
+	return user, nil
+}
+
+func (s *messageService) find(messageID int64) (*models.Message, error) {
+	msg, err := s.messageRepo.FindByID(messageID)
+	if err != nil || msg == nil {
+		return nil, ErrNotFound
+	}
+	return msg, nil
+}
+
+// findOwnRecent valida que el mensaje exista, sea del usuario y siga editable.
+func (s *messageService) findOwnRecent(userID uint, messageID int64) (*models.Message, error) {
+	msg, err := s.find(messageID)
+	if err != nil {
+		return nil, err
+	}
+	if msg.SenderID != userID {
+		return nil, ErrForbidden
+	}
+	if time.Since(msg.CreatedAt) > editWindow {
+		return nil, ErrExpired
+	}
+	return msg, nil
+}
+
+func (s *messageService) broadcast(eventType string, msg *models.Message, payload any) {
+	s.hub.BroadcastEvent(&websocket.Event{
+		Type:       eventType,
+		SenderID:   msg.SenderID,
+		ReceiverID: msg.ReceiverID,
+		Payload:    payload,
+	})
 }

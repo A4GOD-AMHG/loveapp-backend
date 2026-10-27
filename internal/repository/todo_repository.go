@@ -72,7 +72,7 @@ func (r *TodoRepository) FindByID(id int64) (*models.Todo, error) {
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("todo not found")
+			return nil, ErrNotFound
 		}
 		return nil, err
 	}
@@ -185,15 +185,14 @@ func (r *TodoRepository) GetTodos(status models.TodoStatus, creatorID *int64, re
 			&todo.UpdatedAt,
 		)
 		if err != nil {
-			fmt.Printf("Error scanning todo row: %v\n", err)
-			continue
+			return nil, 0, err
 		}
 		// Calcular el campo virtual IsCompleted
 		todo.IsCompleted = todo.CompletedAnyel && todo.CompletedAlexis
 		todos = append(todos, todo)
 	}
 
-	return todos, total, nil
+	return todos, total, rows.Err()
 }
 
 // Update actualiza el título y la descripción de una tarea existente.
@@ -236,7 +235,7 @@ func (r *TodoRepository) UpdateCompletion(todoID int64, username string, complet
 	}
 
 	if rowsAffected == 0 {
-		return nil, fmt.Errorf("todo not found")
+		return nil, ErrNotFound
 	}
 
 	// Retornar el estado actualizado de la tarea
@@ -260,7 +259,7 @@ func (r *TodoRepository) Delete(id int64) error {
 	}
 
 	if rowsAffected == 0 {
-		return fmt.Errorf("todo not found")
+		return ErrNotFound
 	}
 
 	return nil
@@ -276,7 +275,7 @@ func (r *TodoRepository) GetCreatorID(todoID int64) (int64, error) {
 	err := r.db.QueryRow(query, todoID).Scan(&creatorID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return 0, fmt.Errorf("todo not found")
+			return 0, ErrNotFound
 		}
 		return 0, err
 	}

@@ -2,14 +2,12 @@
 package controllers
 
 import (
-	"encoding/json"
+	"errors"
 	"net/http"
-	"strconv"
 
 	"github.com/A4GOD-AMHG/LoveApp-Backend/internal/models"
 	"github.com/A4GOD-AMHG/LoveApp-Backend/internal/services"
 	"github.com/A4GOD-AMHG/LoveApp-Backend/pkg/response"
-	"github.com/gorilla/mux"
 )
 
 // TodoController maneja los endpoints relacionados con la gestión de tareas.
@@ -19,10 +17,8 @@ type TodoController struct {
 
 // NewTodoController crea y retorna una nueva instancia de TodoController
 // con su servicio de tareas ya inicializado.
-func NewTodoController() *TodoController {
-	return &TodoController{
-		todoService: services.NewTodoService(),
-	}
+func NewTodoController(todoService *services.TodoService) *TodoController {
+	return &TodoController{todoService: todoService}
 }
 
 // CreateTodo maneja la creación de tareas
@@ -40,29 +36,24 @@ func NewTodoController() *TodoController {
 // @Failure 500 {object} models.ErrorResponse "Error interno del servidor"
 // @Router /todos [post]
 func (h *TodoController) CreateTodo(w http.ResponseWriter, r *http.Request) {
-	// Obtener el usuario autenticado desde el contexto (inyectado por el middleware)
-	user := r.Context().Value("user").(*models.User)
-
+	user, ok := currentUser(w, r)
+	if !ok {
+		return
+	}
 	var req models.CreateTodoRequest
-
-	// Decodificar el cuerpo JSON con los datos de la nueva tarea
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		response.BadRequest(w, "Por favor, revisa los datos ingresados.")
+	if !decodeJSON(w, r, &req, "Por favor, revisa los datos ingresados.") {
 		return
 	}
 
-	// Delegar la creación al servicio con validación de título
-	createResponse, err := h.todoService.CreateTodo(user.ID, user.Username, &req)
-	if err != nil {
-		if err.Error() == "el título es requerido" {
-			response.BadRequest(w, "El título de la tarea no puede estar vacío.")
-			return
-		}
+	createResponse, err := h.todoService.CreateTodo(user.ID, &req)
+	switch {
+	case err == nil:
+		response.JSON(w, http.StatusCreated, createResponse)
+	case errors.Is(err, services.ErrInvalidInput):
+		response.BadRequest(w, "El título de la tarea no puede estar vacío.")
+	default:
 		response.InternalServerError(w, "Tuvimos un problema al crear la tarea. Inténtalo más tarde.")
-		return
 	}
-
-	response.JSON(w, http.StatusCreated, createResponse)
 }
 
 // GetTodos maneja el listado de tareas con filtros y ordenamiento
@@ -83,29 +74,24 @@ func (h *TodoController) CreateTodo(w http.ResponseWriter, r *http.Request) {
 // @Failure 500 {object} models.ErrorResponse "Error interno del servidor"
 // @Router /todos [get]
 func (h *TodoController) GetTodos(w http.ResponseWriter, r *http.Request) {
-	// Obtener el usuario autenticado desde el contexto
-	user := r.Context().Value("user").(*models.User)
-
-	// Leer los filtros y parámetros de paginación desde la query string
-	status := r.URL.Query().Get("status")
-	creatorID := r.URL.Query().Get("creator_id")
-	sortOrder := r.URL.Query().Get("sort_order")
-	search := r.URL.Query().Get("search")
-	page := r.URL.Query().Get("page")
-	limit := r.URL.Query().Get("limit")
-
-	// Delegar la consulta filtrada al servicio de tareas
-	listResponse, err := h.todoService.GetTodos(status, creatorID, user.Username, sortOrder, search, page, limit)
-	if err != nil {
-		if err.Error() == "ID de creador inválido" {
-			response.BadRequest(w, "El ID del creador no es válido.")
-			return
-		}
-		response.InternalServerError(w, "No pudimos cargar las tareas. Inténtalo de nuevo.")
+	user, ok := currentUser(w, r)
+	if !ok {
 		return
 	}
+	q := r.URL.Query()
 
-	response.JSON(w, http.StatusOK, listResponse)
+	listResponse, err := h.todoService.GetTodos(
+		q.Get("status"), q.Get("creator_id"), user.Username,
+		q.Get("sort_order"), q.Get("search"), q.Get("page"), q.Get("limit"),
+	)
+	switch {
+	case err == nil:
+		response.JSON(w, http.StatusOK, listResponse)
+	case errors.Is(err, services.ErrInvalidInput):
+		response.BadRequest(w, "El ID del creador no es válido.")
+	default:
+		response.InternalServerError(w, "No pudimos cargar las tareas. Inténtalo de nuevo.")
+	}
 }
 
 // UpdateTodo maneja la actualización de tareas (título/descripción)
@@ -125,47 +111,32 @@ func (h *TodoController) GetTodos(w http.ResponseWriter, r *http.Request) {
 // @Failure 500 {object} models.ErrorResponse "Error interno del servidor"
 // @Router /todos/{id} [put]
 func (h *TodoController) UpdateTodo(w http.ResponseWriter, r *http.Request) {
-	// Obtener el ID del usuario autenticado desde el contexto
-	userID := r.Context().Value("user_id").(int64)
-
-	// Parsear el ID de la tarea desde los parámetros de la URL
-	vars := mux.Vars(r)
-	todoIDStr := vars["id"]
-	todoID, err := strconv.ParseInt(todoIDStr, 10, 64)
-	if err != nil {
-		response.BadRequest(w, "El ID de la tarea no es válido.")
+	user, ok := currentUser(w, r)
+	if !ok {
 		return
 	}
-
-	// Decodificar el cuerpo JSON con los nuevos datos de la tarea
+	todoID, ok := pathID(w, r, "El ID de la tarea no es válido.")
+	if !ok {
+		return
+	}
 	var req models.UpdateTodoRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		response.BadRequest(w, "Por favor, revisa los datos ingresados.")
+	if !decodeJSON(w, r, &req, "Por favor, revisa los datos ingresados.") {
 		return
 	}
 
-	// Validar que el título no esté vacío
-	if req.Title == "" {
+	updatedTodo, err := h.todoService.UpdateTodo(todoID, user.ID, &req)
+	switch {
+	case err == nil:
+		response.JSON(w, http.StatusOK, updatedTodo)
+	case errors.Is(err, services.ErrInvalidInput):
 		response.BadRequest(w, "El título de la tarea no puede estar vacío.")
-		return
-	}
-
-	// Delegar la actualización al servicio (solo el creador puede editar)
-	updatedTodo, err := h.todoService.UpdateTodo(todoID, userID, &req)
-	if err != nil {
-		if err.Error() == "todo no encontrado" {
-			response.NotFound(w, "No encontramos la tarea que quieres editar.")
-			return
-		}
-		if err.Error() == "solo el creador puede editar este todo" {
-			response.Forbidden(w, "Solo quien creó la tarea puede editarla.")
-			return
-		}
+	case errors.Is(err, services.ErrNotFound):
+		response.NotFound(w, "No encontramos la tarea que quieres editar.")
+	case errors.Is(err, services.ErrForbidden):
+		response.Forbidden(w, "Solo quien creó la tarea puede editarla.")
+	default:
 		response.InternalServerError(w, "No pudimos editar la tarea. Inténtalo más tarde.")
-		return
 	}
-
-	response.JSON(w, http.StatusOK, updatedTodo)
 }
 
 // UpdateTodoStatus maneja la actualización del estado de la tarea
@@ -185,45 +156,32 @@ func (h *TodoController) UpdateTodo(w http.ResponseWriter, r *http.Request) {
 // @Failure 500 {object} models.ErrorResponse "Error interno del servidor"
 // @Router /todos/{id} [patch]
 func (h *TodoController) UpdateTodoStatus(w http.ResponseWriter, r *http.Request) {
-	// Obtener el nombre de usuario autenticado desde el contexto
-	username := r.Context().Value("username").(string)
-
-	// Parsear el ID de la tarea desde los parámetros de la URL
-	vars := mux.Vars(r)
-	todoIDStr := vars["id"]
-	todoID, err := strconv.ParseInt(todoIDStr, 10, 64)
-	if err != nil {
-		response.BadRequest(w, "El ID de la tarea no es válido.")
+	user, ok := currentUser(w, r)
+	if !ok {
 		return
 	}
-
-	// Decodificar el nuevo estado (completado o no) desde el cuerpo JSON
+	todoID, ok := pathID(w, r, "El ID de la tarea no es válido.")
+	if !ok {
+		return
+	}
 	var req models.UpdateTodoStatusRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		response.BadRequest(w, "Por favor, revisa los datos ingresados.")
+	if !decodeJSON(w, r, &req, "Por favor, revisa los datos ingresados.") {
 		return
 	}
 
-	// Delegar la actualización de estado al servicio con validaciones de usuario
-	statusResponse, err := h.todoService.UpdateTodoStatus(todoID, username, req.Completed)
-	if err != nil {
-		if err.Error() == "todo no encontrado" {
-			response.NotFound(w, "No encontramos la tarea que buscas.")
-			return
-		}
-		if err.Error() == "usuario no autorizado para marcar todos" {
-			response.Forbidden(w, "No tienes permiso para actualizar esta tarea.")
-			return
-		}
-		if err.Error() == "la tarea ya está completada por ambos y no se puede desmarcar" {
-			response.BadRequest(w, "¡La tarea ya está completada por ambos! No se puede desmarcar. 🎉")
-			return
-		}
+	statusResponse, err := h.todoService.UpdateTodoStatus(todoID, user.Username, req.Completed)
+	switch {
+	case err == nil:
+		response.JSON(w, http.StatusOK, statusResponse)
+	case errors.Is(err, services.ErrNotFound):
+		response.NotFound(w, "No encontramos la tarea que buscas.")
+	case errors.Is(err, services.ErrForbidden):
+		response.Forbidden(w, "No tienes permiso para actualizar esta tarea.")
+	case errors.Is(err, services.ErrAlreadyCompleted):
+		response.BadRequest(w, "¡La tarea ya está completada por ambos! No se puede desmarcar. 🎉")
+	default:
 		response.InternalServerError(w, "Hubo un error al actualizar la tarea. Inténtalo de nuevo.")
-		return
 	}
-
-	response.JSON(w, http.StatusOK, statusResponse)
 }
 
 // DeleteTodo maneja la eliminación de tareas
@@ -241,32 +199,24 @@ func (h *TodoController) UpdateTodoStatus(w http.ResponseWriter, r *http.Request
 // @Failure 500 {object} models.ErrorResponse "Error interno del servidor"
 // @Router /todos/{id} [delete]
 func (h *TodoController) DeleteTodo(w http.ResponseWriter, r *http.Request) {
-	// Obtener el ID del usuario autenticado desde el contexto
-	userID := r.Context().Value("user_id").(int64)
-
-	// Parsear el ID de la tarea desde los parámetros de la URL
-	vars := mux.Vars(r)
-	todoIDStr := vars["id"]
-	todoID, err := strconv.ParseInt(todoIDStr, 10, 64)
-	if err != nil {
-		response.BadRequest(w, "El ID de la tarea no es válido.")
+	user, ok := currentUser(w, r)
+	if !ok {
+		return
+	}
+	todoID, ok := pathID(w, r, "El ID de la tarea no es válido.")
+	if !ok {
 		return
 	}
 
-	// Delegar la eliminación al servicio (solo el creador puede eliminar)
-	err = h.todoService.DeleteTodo(todoID, userID)
-	if err != nil {
-		if err.Error() == "todo no encontrado" {
-			response.NotFound(w, "No encontramos la tarea que quieres eliminar.")
-			return
-		}
-		if err.Error() == "solo el creador puede eliminar este todo" {
-			response.Forbidden(w, "Solo quien creó la tarea puede eliminarla.")
-			return
-		}
+	err := h.todoService.DeleteTodo(todoID, user.ID)
+	switch {
+	case err == nil:
+		response.Success(w, "¡Tarea eliminada con éxito! 👋", nil)
+	case errors.Is(err, services.ErrNotFound):
+		response.NotFound(w, "No encontramos la tarea que quieres eliminar.")
+	case errors.Is(err, services.ErrForbidden):
+		response.Forbidden(w, "Solo quien creó la tarea puede eliminarla.")
+	default:
 		response.InternalServerError(w, "No pudimos eliminar la tarea. Inténtalo más tarde.")
-		return
 	}
-
-	response.Success(w, "¡Tarea eliminada con éxito! 👋", nil)
 }

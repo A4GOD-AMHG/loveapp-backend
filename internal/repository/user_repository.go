@@ -3,7 +3,6 @@ package repository
 
 import (
 	"database/sql"
-	"fmt"
 
 	"github.com/A4GOD-AMHG/LoveApp-Backend/internal/models"
 	"github.com/A4GOD-AMHG/LoveApp-Backend/pkg/database"
@@ -40,7 +39,7 @@ func (r *UserRepository) FindByUsername(username string) (*models.User, error) {
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("user not found")
+			return nil, ErrNotFound
 		}
 		return nil, err
 	}
@@ -65,7 +64,7 @@ func (r *UserRepository) FindByID(id int64) (*models.User, error) {
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("user not found")
+			return nil, ErrNotFound
 		}
 		return nil, err
 	}
@@ -91,7 +90,7 @@ func (r *UserRepository) UpdatePassword(userID int64, hashedPassword string) err
 	}
 
 	if rowsAffected == 0 {
-		return fmt.Errorf("user not found")
+		return ErrNotFound
 	}
 
 	return nil
@@ -107,7 +106,7 @@ func (r *UserRepository) GetPasswordHash(userID int64) (string, error) {
 	err := r.db.QueryRow(query, userID).Scan(&passwordHash)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return "", fmt.Errorf("user not found")
+			return "", ErrNotFound
 		}
 		return "", err
 	}
@@ -133,7 +132,7 @@ func (r *UserRepository) GetOtherUser(currentUserID uint) (*models.User, error) 
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("other user not found")
+			return nil, ErrNotFound
 		}
 		return nil, err
 	}
