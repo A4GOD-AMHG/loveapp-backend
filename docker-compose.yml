@@ -1,0 +1,19 @@
+services:
+  loveapp-backend:
+    build: .
+    container_name: loveapp-backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DB_PATH: /data/loveapp.db
+      SERVER_PORT: "4418"
+      FIREBASE_CREDENTIALS_FILE: /app/firebase-credentials.json
+    # Solo en localhost: nginx (HTTPS) es el único que lo expone a internet.
+    ports:
+      - "127.0.0.1:${LOVEAPP_HOST_PORT:-37491}:4418"
+    volumes:
+      # La base SQLite vive en ./data del servidor (fácil de respaldar).
+      # La carpeta debe ser del usuario de la imagen: sudo chown -R 65532:65532 data
+      - ./data:/data
+      # Credenciales de Firebase para las notificaciones push.
+      - ./firebase-credentials.json:/app/firebase-credentials.json:ro

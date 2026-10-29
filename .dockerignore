@@ -1,0 +1,9 @@
+.git
+.env
+.gocache
+bin
+data
+logs
+run
+*.db
+*firebase-adminsdk*.json
